@@ -909,8 +909,8 @@ class PeaksMatcherGUI(ttk.Frame):
         self.matched_pairs.add(("CT", self.ct_frame_index))
         self.matched_pairs.add(("OCT", self.oct_frame_index))
   
-        print(f"Added ({"CT"}, {self.ct_frame_index}) to matched pairs.")
-        print(f"Added ({"OCT"}, {self.oct_frame_index}) to matched pairs.")
+        print(f"Added (CT, {self.ct_frame_index}) to matched pairs.")
+        print(f"Added (OCT, {self.oct_frame_index}) to matched pairs.")
         self.update_matched_pairs_window()
         print("Add Pairs button clicked")
     
