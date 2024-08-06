@@ -8,7 +8,7 @@ Doctors use a catheter with a camera to examine coronary arteries. Before and af
 
 ## Complexity and Runtime
 
-The algorithm has a complexity of \(O(n)\), where \(n\) is the number of frames in a sequence. 
+The algorithm has a complexity of O(n), where n is the number of frames in a sequence. 
 
 ### Runtime Performance
 
