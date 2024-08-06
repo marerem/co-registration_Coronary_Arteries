@@ -1,4 +1,4 @@
-# Co-Registration of Coronary Artery Imaging
+# Spline Co-Registration of Coronary Artery Imaging
 
 This Spline approuch, with a graphical user interface (GUI), assists in co-registering two sequences of images by aligning one sequence to another based on user-selected checkpoints.
 
