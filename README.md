@@ -36,3 +36,23 @@ conda activate coronary-artery-imaging
 
 # Install required packages
 pip install -r requirements.txt
+
+
+
+## Porject Structure
+
+coronary-artery-imaging/
+├── data/
+│   ├── sample_before/
+│   ├── sample_after/
+├── src/
+│   ├── main.py
+│   ├── gui.py
+│   ├── alignment_algorithm.py
+├── tests/
+│   ├── test_alignment.py
+├── requirements.txt
+├── environment.yml
+├── README.md
+
+
