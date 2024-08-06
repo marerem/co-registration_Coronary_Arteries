@@ -14,4 +14,25 @@ The algorithm has a complexity of O(n), where n is the number of frames in a seq
 
 - **Average Time per 250 Frames:** 5 seconds
 
-This performance shows the algorithm can swiftly process large sets of image data, aiding medical professionals efficiently.
+## Getting Started
+
+### Prerequisites
+
+- Python 3.12
+- Required Python packages (listed in `requirements.txt`)
+
+### Installation
+
+Steps to install the project.
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/coronary-artery-imaging.git
+cd coronary-artery-imaging
+
+# Create and activate a virtual environment
+conda env create -f environment.yml
+conda activate coronary-artery-imaging
+
+# Install required packages
+pip install -r requirements.txt
