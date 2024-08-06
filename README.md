@@ -56,7 +56,7 @@ coronary-artery-imaging/
 ├── run_raw.py/ - main run file for co-registration, as input required 4 pathes of data (exmaple in data/ folder).
 ├── rigid_co.py/ - file containing all functions needed for co-registration.
 ├── GUI_up_v.py/ - GUI for selecting checkpoint and angle.
-├── pre_post_flow.ipynb/ - it's .ipynb where you can run co-registration using Jupyter Notebook
+├── pre_post_flow.ipynb/ - it's ipynb file where you can run co-registration using Jupyter Notebook
 ├── requirements.txt 
 ├── environment.yml
 ├── README.md
