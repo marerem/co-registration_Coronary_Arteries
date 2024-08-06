@@ -1,19 +1,29 @@
 from rigid_co import *
 import torch
 import numpy as np
-def co_registration_patient(patient_id=None,moving_path_mask=None,moving_path_raw=None,target_path_mask=None,target_path_raw=None):
-
-
-
-    # load segmentation data
-    img = nib.load(target_path_mask)
-    img_data_pre = img.get_fdata() 
-    img = nib.load(moving_path_mask)
-    img_data_post = img.get_fdata()
+from without_seg_fun import *
+def co_registration_patient_only(patient_id=None,moving_path_mask=None,moving_path_raw=None,target_path_mask=None,target_path_raw=None,only=False):
 
     # load original data 
     pre_data = nib.load(target_path_raw).get_fdata()
     post_data = nib.load(moving_path_raw).get_fdata()
+    if only:
+        #generate random data
+        img_data_pre = np.zeros((pre_data.shape[0], pre_data.shape[1], pre_data.shape[-1]), dtype=np.uint8)
+        img_data_post = np.zeros((post_data.shape[0], post_data.shape[1], post_data.shape[-1]), dtype=np.uint8)
+        for i in range(pre_data.shape[-1]):
+            img_data_pre[:, :, i] = draw_two_parallel_lines(np.zeros((pre_data.shape[0], pre_data.shape[0]))) 
+        
+        for i in range(post_data.shape[-1]):
+            img_data_post[:, :, i] = draw_wide_diagonal_line(np.zeros((post_data.shape[0], post_data.shape[0])))
+    else:
+        # load segmentation data
+        img = nib.load(target_path_mask)
+        img_data_pre = img.get_fdata() 
+        img = nib.load(moving_path_mask)
+        img_data_post = img.get_fdata()
+
+
 
     sdf_ct= distance_transform_edt(torch.tensor(img_data_post).permute(2, 0, 1))  
     sdf_oct= distance_transform_edt(torch.tensor(img_data_pre).permute(2, 0, 1))
@@ -122,29 +132,33 @@ def co_registration_patient(patient_id=None,moving_path_mask=None,moving_path_ra
     ph_or = ridgit_register(ct_data_or[0], torch.tensor(np.array(arr).reshape(-1,1)))
     ph = ridgit_register(CT_sdf_cpr[0], torch.tensor(np.array(arr).reshape(-1,1)))
 
-    ct_circl = []
-    for i in range(CT_sdf_cpr.shape[1]):
-        orientation,centroid = center_circle(ph.unsqueeze(0)[0,i,...].detach().numpy()>0)
-        ct_circl.append(centroid)
+    if only:
+        oct_circl = detect_center(pre_data)
+        ct_circl = detect_center(post_data)
+    else:
+        ct_circl = []
+        for i in range(CT_sdf_cpr.shape[1]):
+            orientation,centroid = center_circle(ph.unsqueeze(0)[0,i,...].detach().numpy()>0)
+            ct_circl.append(centroid)
 
-    oct_circl= []
-    for i in range(OCT_sdf_cpr.shape[1]):
-        orientation,centroid = center_circle(OCT_sdf_cpr[0,i,...].detach().numpy()>0)
-        oct_circl.append(centroid)
+        oct_circl= []
+        for i in range(OCT_sdf_cpr.shape[1]):
+            orientation,centroid = center_circle(OCT_sdf_cpr[0,i,...].detach().numpy()>0)
+            oct_circl.append(centroid)
 
-    # Convert centers to numpy arrays for easier processing
-    oct_circl = np.array([c for c in oct_circl if c[0] is not None and c[1] is not None])
-    ct_circl = np.array([c for c in ct_circl if c[0] is not None and c[1] is not None])
+        # Convert centers to numpy arrays for easier processing
+        oct_circl = np.array([c for c in oct_circl if c[0] is not None and c[1] is not None])
+        ct_circl = np.array([c for c in ct_circl if c[0] is not None and c[1] is not None])
    
-    # Ensure there are enough points to apply the filter
-    if len(oct_circl) > 31 and len(ct_circl) > 31:
-        # Smooth the center coordinates
-        oct_circl = np.copy(oct_circl)
-        ct_circl = np.copy(ct_circl)
-        
-        for dim in range(2):  # For both x and y dimensions
-            oct_circl[:, dim] = savgol_filter(oct_circl[:, dim], 31, 2)
-            oct_circl[:, dim] = savgol_filter(ct_circl[:, dim], 31, 2)
+        # Ensure there are enough points to apply the filter
+        if len(oct_circl) > 31 and len(ct_circl) > 31:
+            # Smooth the center coordinates
+            oct_circl = np.copy(oct_circl)
+            ct_circl = np.copy(ct_circl)
+            
+            for dim in range(2):  # For both x and y dimensions
+                oct_circl[:, dim] = savgol_filter(oct_circl[:, dim], 31, 2)
+                oct_circl[:, dim] = savgol_filter(ct_circl[:, dim], 31, 2)
    
     ph_or_circle = rotation(ph_or.unsqueeze(0),oct_circl,ct_circl)
     #ph_or_smooth_min = rotation(ph_or.unsqueeze(0),OCT_centers_smoothedmin,CT_centers_smoothedmin)
@@ -200,7 +214,7 @@ if __name__ == '__main__':
     target_path_mask='data/'+patient_id+'Pre.nii.gz'
     moving_path_raw='data/'+patient_id+'Post_0000.nii.gz'
     target_path_raw='data/'+patient_id+'Pre_0000.nii.gz'
-    CT_selected_indices_shift,OCT_selected_indices_shift, fixed_image, br,organized_pairs,ang_big,ct_data_or  =co_registration_patient(patient,moving_path_mask,moving_path_raw,target_path_mask,target_path_raw)
+    CT_selected_indices_shift,OCT_selected_indices_shift, fixed_image, br,organized_pairs,ang_big,ct_data_or  =co_registration_patient_only(patient,moving_path_raw=moving_path_raw,target_path_raw=target_path_raw,only=True)
     fim = np.array(fixed_image, dtype=np.float32)
     mov = np.array(br, dtype=np.float32)
     #np.save('_fixed_image.npy',fim)
