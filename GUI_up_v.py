@@ -960,41 +960,6 @@ class PeaksMatcherGUI(ttk.Frame):
         self.y_shift_oct = float(value)
         self.update_plot()
 
-    def update_ct_frame(self, value):
-        self.ct_frame_index = int(value)
-        titles = [
-        "Segmentation of Moving frames",
-        "Raw Moving frames",
-        ]
-        # Loop through each axis and apply the patch and title
-        for i, ax in enumerate([self.ax[1],self.ax[2]]):
-            # Set the title
-            ax.clear()
-            ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
-            if i == 0:  
-                # Display the image (for demonstration, using the same image for all)
-                ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='GnBu')
-                
-            if i == 1:
-                #ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='Blues')
-                ax.imshow(self.or_ct[0, self.ct_frame_index, ...])
-            # Add rounded boundaries around the plot
-            for spine in ax.spines.values():
-                spine.set_visible(False)
-            
-            # Create a FancyBboxPatch with rounded corners
-            bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=ax.transAxes, clip_on=False)
-            ax.add_patch(bbox)
-            ax.axis('off')  
-        # Remove the previous vertical line if it exists
-        if self.ct_current_frame_line is not None:
-            self.ct_current_frame_line.remove()
-        
-        # Add the new vertical line and store its reference
-        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
-      
-        self.canvas.draw()
-        print('update ct frame')
     def on_closing(self):
         self.show_saving_orientation()
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -1316,7 +1281,42 @@ class PeaksMatcherGUI(ttk.Frame):
         cl_btn = ttk.Button(self.orientation_window, text="Close", command=self.orientation_window.destroy)
         cl_btn.pack(pady=10)
 
-
+    
+    def update_ct_frame(self, value):
+        self.ct_frame_index = int(value)
+        titles = [
+        "Segmentation of Moving frames",
+        "Raw Moving frames",
+        ]
+        # Loop through each axis and apply the patch and title
+        for i, ax in enumerate([self.ax[1],self.ax[2]]):
+            # Set the title
+            ax.clear()
+            ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
+            if i == 0:  
+                # Display the image (for demonstration, using the same image for all)
+                ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='GnBu')
+                
+            if i == 1:
+                #ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='Blues')
+                ax.imshow(self.or_ct[0, self.ct_frame_index, ...])
+            # Add rounded boundaries around the plot
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            
+            # Create a FancyBboxPatch with rounded corners
+            bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=ax.transAxes, clip_on=False)
+            ax.add_patch(bbox)
+            ax.axis('off')  
+        # Remove the previous vertical line if it exists
+        if self.ct_current_frame_line is not None:
+            self.ct_current_frame_line.remove()
+        
+        # Add the new vertical line and store its reference
+        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
+      
+        self.canvas.draw()
+        print('update ct frame')
     def update_oct_frame(self, value):
         self.oct_frame_index = int(value)
         titles = [
@@ -1395,30 +1395,23 @@ class PeaksMatcherGUI(ttk.Frame):
         
         self.canvas.draw()
 
-
     def on_pick(self, event):
         Area_CT, Area_OCT = self.Area_CT, self.Area_OCT
-
-        # This method is called when a plot line is clicked near a data point.
         picked_x = event.mouseevent.xdata  # Get the x-coordinate of the pick event in data coordinates.
-
-        # Determine which dataset the point belongs to
-        if event.artist.get_label() == 'Areas of Register frames':
-
-            # Adjust the picked x-value based on current shift and find the closest peak
+        
+        # Determine which dataset the point belongs to based on the label of the artist
+        label = event.artist.get_label()
+        print('label',label)
+        if label == 'Areas of Moving frames':  # Assuming the CT graph is labeled 'CT'
             adjusted_x = picked_x - self.x_shift_ct
-            # Find the peak closest to this adjusted x-value
             point_index = np.argmin(np.abs(np.arange(len(Area_CT)) - adjusted_x))
-
             self.ct_frame_index_slider.set(point_index)
 
-        else:
-  
+        elif label == 'Area of Target frames':  # Assuming the OCT graph is labeled 'OCT'
             adjusted_x = picked_x - self.x_shift_oct
             point_index = np.argmin(np.abs(np.arange(len(Area_OCT)) - adjusted_x))
-        
             self.oct_frame_index_slider.set(point_index)
-     
+
         self.update_plot()
 
 
