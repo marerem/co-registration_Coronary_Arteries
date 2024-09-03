@@ -205,8 +205,8 @@ class PeaksMatcherGUI(ttk.Frame):
         # Define the columns
         self.pairs_tree = ttk.Treeview(self.pairs_window, columns=("CT", "OCT"))
         self.pairs_tree.heading("#0", text="ID", anchor=tk.W)
-        self.pairs_tree.heading("CT", text="CT Peak")
-        self.pairs_tree.heading("OCT", text="OCT Peak")
+        self.pairs_tree.heading("CT", text="Moving ")
+        self.pairs_tree.heading("OCT", text="Target pair")
         
         # Format the columns
         self.pairs_tree.column("#0", anchor=tk.W, width=40)
@@ -711,14 +711,14 @@ class PeaksMatcherGUI(ttk.Frame):
 
             #plt.show()
            
-        self.axes[0].set_title(f'Adjusted bifurcation № {ct_value}', fontsize=12)
+        self.axes[0].set_title(f'Moving frame number {ct_value}', fontsize=12)
         #self.axes[0].set_xlabel('X-axis Label', fontsize=12)
         #self.axes[0].set_ylabel('Y-axis Label', fontsize=12)
         self.axes[0].grid(True)
 
         # Customize OCT plot
         
-        self.axes[1].set_title(f'Ground truth bifurcation № {oct_value}', fontsize=12)
+        self.axes[1].set_title(f'Target frame number {oct_value}', fontsize=12)
         #self.axes[1].set_xlabel('X-axis Label', fontsize=12)
         #self.axes[1].set_ylabel('Y-axis Label', fontsize=12)
         self.axes[1].grid(True)
@@ -924,21 +924,21 @@ class PeaksMatcherGUI(ttk.Frame):
         d = len(self.Area_CT) /2
 
         # CT X Shift Slider
-        CustomSlider(frame, from_=-d, to=d, label='X Shift CT', command=self.update_x_shift_ct).pack(side='left',padx=5, pady=5)
+        CustomSlider(frame, from_=-d, to=d, label='X Shift Moving', command=self.update_x_shift_ct).pack(side='left',padx=5, pady=5)
         # CT Y Shift Slider
-        CustomSlider(frame, from_=-v, to=v, label='Y Shift CT', command=self.update_y_shift_ct).pack(side='left',padx=5, pady=5)
+        CustomSlider(frame, from_=-v, to=v, label='Y Shift Moving', command=self.update_y_shift_ct).pack(side='left',padx=5, pady=5)
         # OCT X Shift Slider
-        CustomSlider(frame, from_=-d, to=d, label='X Shift OCT', command=self.update_x_shift_oct).pack(side='left',padx=5, pady=5)
+        CustomSlider(frame, from_=-d, to=d, label='X Shift Target', command=self.update_x_shift_oct).pack(side='left',padx=5, pady=5)
         # OCT Y Shift Slider
-        CustomSlider(frame, from_=-v, to=v, label='Y Shift OCT', command=self.update_y_shift_oct).pack(side='left',padx=5, pady=5)
+        CustomSlider(frame, from_=-v, to=v, label='Y Shift Target', command=self.update_y_shift_oct).pack(side='left',padx=5, pady=5)
         # Slider for CT frames
-        self.ct_frame_index_slider = tk.Scale(widget_frame, label="CT Frame Index",
+        self.ct_frame_index_slider = tk.Scale(widget_frame, label="Moving Frame Index",
                                               from_=0, to=self.ct_frames.shape[1] - 1,
                                               orient=tk.HORIZONTAL, command=self.update_ct_frame)
         self.ct_frame_index_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
 
         # Slider for OCT frames
-        self.oct_frame_index_slider = tk.Scale(widget_frame, label="OCT Frame Index",
+        self.oct_frame_index_slider = tk.Scale(widget_frame, label="Target Frame Index",
                                                from_=0, to=self.oct_frames.shape[1] - 1,
                                                orient=tk.HORIZONTAL, command=self.update_oct_frame)
         self.oct_frame_index_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
@@ -963,8 +963,8 @@ class PeaksMatcherGUI(ttk.Frame):
     def update_ct_frame(self, value):
         self.ct_frame_index = int(value)
         titles = [
-        "Masks of Register frames",
-        "Original Register frames",
+        "Segmentation of Moving frames",
+        "Raw Moving frames",
         ]
         # Loop through each axis and apply the patch and title
         for i, ax in enumerate([self.ax[1],self.ax[2]]):
@@ -1320,8 +1320,8 @@ class PeaksMatcherGUI(ttk.Frame):
     def update_oct_frame(self, value):
         self.oct_frame_index = int(value)
         titles = [
-        "Masks of Target frames",
-        "Original  Target frames",
+        "Segmentation of Target frames",
+        "Raw Target frames",
         ]
         # Loop through each axis and apply the patch and title
         for i, ax in enumerate([self.ax[3],self.ax[4]]):
@@ -1370,7 +1370,7 @@ class PeaksMatcherGUI(ttk.Frame):
         self.peaks_CT, self.peaks_OCT = np.array(peaks_CT), np.array(peaks_OCT)
         self.ax[0].plot(self.peaks_CT + self.x_shift_ct, self.Area_CT[self.peaks_CT] + self.y_shift_ct, "x", color='magenta', markersize=5,label='Potential bifurcation',)  # Highlighted in green
         self.ax[0].plot(self.peaks_OCT + self.x_shift_oct, self.Area_OCT[self.peaks_OCT] + self.y_shift_oct, "x", color='magenta', markersize=5)
-        self.ax[0].plot(adjusted_x_ct, adjusted_y_ct, label='Areas of Register frames', picker=5)
+        self.ax[0].plot(adjusted_x_ct, adjusted_y_ct, label='Areas of Moving frames', picker=5)
         self.ax[0].plot(adjusted_x_oct, adjusted_y_oct, label='Area of Target frames', picker=5)
         
         # Plot each peak, highlight if it's in highlighted_points
