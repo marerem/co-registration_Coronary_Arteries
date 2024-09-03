@@ -165,64 +165,69 @@ def organize_matched_pairss(saving_orientation,saving_orientation_angl_show):
         pairs = []
     print(pairs,ang_big)
     return pairs,ang_big,an
-
 class PeaksMatcherGUI(ttk.Frame):
-    def __init__(self, master,Area_CT=None, Area_OCT=None,CT_image=None,OCT_image=None,or_ct=None,or_oct=None):
+    def __init__(self, master, Area_CT=None, Area_OCT=None, CT_image=None, OCT_image=None, or_ct=None, or_oct=None):
         super().__init__(master)
-        #find local maxima
+        
+        # Initializing variables
         self.angle_between_common = 0
         self.vector_ct = []
         self.vector_oct = []
         self.or_ct = or_ct  
         self.or_oct = or_oct
         self.plot_type = tk.StringVar(value='circle')
-        #self.plot_type = tk.StringVar(value='circle')
         self.ct_frames = CT_image.detach().numpy()
         self.oct_frames = OCT_image.detach().numpy()
         self.ct_current_frame_line = None
         self.oct_current_frame_line = None
         self.ct_frame_index = 0  # Initialize frame index for CT
         self.oct_frame_index = 0  # Initialize frame index for OCT
-        self.Area_CT,self.Area_OCT = Area_CT.numpy(),Area_OCT.numpy()
-        peaks_CT, _ = find_peaks(Area_CT, height=None)  # You can adjust parameters here for sensitivity
-        peaks_OCT, _ = find_peaks(Area_OCT, height=None)
+        self.Area_CT, self.Area_OCT = Area_CT.numpy(), Area_OCT.numpy()
+        peaks_CT, _ = find_peaks(self.Area_CT, height=None)  # Adjust parameters for sensitivity
+        peaks_OCT, _ = find_peaks(self.Area_OCT, height=None)
         self.peaks_CT, self.peaks_OCT = np.array(peaks_CT), np.array(peaks_OCT)
-        self.pack(fill=tk.BOTH, expand=tk.YES)
         self.matched_pairs = set()  # To store matched pairs
         self.x_shift_ct = 0
         self.y_shift_ct = 0
         self.x_shift_oct = 0
         self.y_shift_oct = 0
-        self.saving_orientation = {'oct':{},'ct':{}}
-        self.saving_orientation_angl_show = {'ct':{}}
+        self.saving_orientation = {'oct': {}, 'ct': {}}
+        self.saving_orientation_angl_show = {'ct': {}}
         self.points = {'ct': [], 'oct': []}
-
-        # Matched Pairs window - modified to use Treeview
-        self.pairs_window = tk.Toplevel(self)
-        self.pairs_window.title("Matched Pairs")
-
         
-        # Define the columns
-        self.pairs_tree = ttk.Treeview(self.pairs_window, columns=("CT", "OCT"))
+        # Layout setup
+        self.pack(fill=tk.BOTH, expand=tk.YES)
+
+        # Create the main GUI frame (left side)
+
+
+        # Create the Matched Pairs frame (right side)
+        self.pairs_frame = ttk.Frame(self)
+        self.pairs_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        # Create Treeview in the pairs frame
+        self.pairs_tree = ttk.Treeview(self.pairs_frame, columns=("CT", "OCT"))
         self.pairs_tree.heading("#0", text="ID", anchor=tk.W)
-        self.pairs_tree.heading("CT", text="CT Peak")
-        self.pairs_tree.heading("OCT", text="OCT Peak")
-        
+        self.pairs_tree.heading("CT", text="Moving ")
+        self.pairs_tree.heading("OCT", text="Target pair")
+
         # Format the columns
         self.pairs_tree.column("#0", anchor=tk.W, width=40)
         self.pairs_tree.column("CT", anchor=tk.CENTER, width=80)
         self.pairs_tree.column("OCT", anchor=tk.CENTER, width=80)
         
         self.pairs_tree.pack(padx=20, pady=20, fill=tk.BOTH, expand=tk.YES)
-        
-
-        # Bind double-click and selection event to the same method
-        self.show_btn = ttk.Button(self.pairs_window, text='Show Selected Pair', command=self.on_item_action)
+        self.main_frame = ttk.Frame(self)
+        self.main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        # Add buttons to the pairs_frame
+        self.show_btn = ttk.Button(self.pairs_frame, text='Show Selected Pair', command=self.on_item_action)
         self.show_btn.pack(pady=10)
-        self.delete_btn = ttk.Button(self.pairs_window, text='Delete Selected Pair', command=self.delete_selected_pair)
+        self.delete_btn = ttk.Button(self.pairs_frame, text='Delete Selected Pair', command=self.delete_selected_pair)
         self.delete_btn.pack(pady=10)
+
+        # Initialize other widgets and functionality
         self.create_widgets()
-        self.pairs_window.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
+        # Protocols for closing the main window
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
         
 
@@ -298,6 +303,7 @@ class PeaksMatcherGUI(ttk.Frame):
         
         print("Save orientation button clicked",self.plot_type.get(),self.ct_value,self.oct_value)
         self.show_save_popup()
+        self.plot_window.destroy()
 
     def show_save_popup(self):
         root = tk.Tk()
@@ -711,14 +717,14 @@ class PeaksMatcherGUI(ttk.Frame):
 
             #plt.show()
            
-        self.axes[0].set_title(f'Adjusted bifurcation № {ct_value}', fontsize=12)
+        self.axes[0].set_title(f'Moving frame number {ct_value}', fontsize=12)
         #self.axes[0].set_xlabel('X-axis Label', fontsize=12)
         #self.axes[0].set_ylabel('Y-axis Label', fontsize=12)
         self.axes[0].grid(True)
 
         # Customize OCT plot
         
-        self.axes[1].set_title(f'Ground truth bifurcation № {oct_value}', fontsize=12)
+        self.axes[1].set_title(f'Target frame number {oct_value}', fontsize=12)
         #self.axes[1].set_xlabel('X-axis Label', fontsize=12)
         #self.axes[1].set_ylabel('Y-axis Label', fontsize=12)
         self.axes[1].grid(True)
@@ -915,33 +921,59 @@ class PeaksMatcherGUI(ttk.Frame):
         print("Add Pairs button clicked")
     
 
-    def create_sliders(self, frame,widget_frame):
+    def create_sliders(self, frame, widget_frame):
         l = np.max(self.Area_CT) - np.max(self.Area_OCT)
         if l >= 0:
-            v = np.max(self.Area_CT) /3 
+            v = np.max(self.Area_CT) / 3 
         else:
-            v = np.max(self.Area_OCT) /3
-        d = len(self.Area_CT) /2
+            v = np.max(self.Area_OCT) / 3
+        d = len(self.Area_CT) / 2
 
+        # Configure grid for the frame
+        frame.grid_columnconfigure(0, weight=1)
+        frame.grid_columnconfigure(1, weight=1)
+        frame.grid_columnconfigure(2, weight=1)
+        frame.grid_columnconfigure(3, weight=1)
+
+        # Create sliders with labels
         # CT X Shift Slider
-        CustomSlider(frame, from_=-d, to=d, label='X Shift CT', command=self.update_x_shift_ct).pack(side='left',padx=5, pady=5)
+        self.create_slider_with_label(frame, 'X Shift Moving', -d, d, self.update_x_shift_ct, row=0, column=0)
+        
         # CT Y Shift Slider
-        CustomSlider(frame, from_=-v, to=v, label='Y Shift CT', command=self.update_y_shift_ct).pack(side='left',padx=5, pady=5)
+        self.create_slider_with_label(frame, 'Y Shift Moving', -v, v, self.update_y_shift_ct, row=0, column=1)
+        
         # OCT X Shift Slider
-        CustomSlider(frame, from_=-d, to=d, label='X Shift OCT', command=self.update_x_shift_oct).pack(side='left',padx=5, pady=5)
+        self.create_slider_with_label(frame, 'X Shift Target', -d, d, self.update_x_shift_oct, row=0, column=2)
+        
         # OCT Y Shift Slider
-        CustomSlider(frame, from_=-v, to=v, label='Y Shift OCT', command=self.update_y_shift_oct).pack(side='left',padx=5, pady=5)
+        self.create_slider_with_label(frame, 'Y Shift Target', -v, v, self.update_y_shift_oct, row=0, column=3)
+
+        # Configure grid for the widget_frame
+        widget_frame.grid_columnconfigure(0, weight=1)
+        widget_frame.grid_columnconfigure(1, weight=1)
+
         # Slider for CT frames
-        self.ct_frame_index_slider = tk.Scale(widget_frame, label="CT Frame Index",
-                                              from_=0, to=self.ct_frames.shape[1] - 1,
-                                              orient=tk.HORIZONTAL, command=self.update_ct_frame)
-        self.ct_frame_index_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+        self.ct_frame_index_slider = tk.Scale(widget_frame, label="Moving Frame Index",
+                                            from_=0, to=self.ct_frames.shape[1] - 1,
+                                            orient=tk.HORIZONTAL, command=self.update_ct_frame)
+        self.ct_frame_index_slider.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
 
         # Slider for OCT frames
-        self.oct_frame_index_slider = tk.Scale(widget_frame, label="OCT Frame Index",
-                                               from_=0, to=self.oct_frames.shape[1] - 1,
-                                               orient=tk.HORIZONTAL, command=self.update_oct_frame)
-        self.oct_frame_index_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+        self.oct_frame_index_slider = tk.Scale(widget_frame, label="Target Frame Index",
+                                            from_=0, to=self.oct_frames.shape[1] - 1,
+                                            orient=tk.HORIZONTAL, command=self.update_oct_frame)
+        self.oct_frame_index_slider.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+
+    def create_slider_with_label(self, parent, label_text, from_, to_, command, row, column):
+        slider_frame = ttk.Frame(parent)
+        slider_frame.grid(row=row, column=column, padx=5, pady=5, sticky='ew')
+        
+        label = ttk.Label(slider_frame, text=label_text)
+        label.pack(side=tk.TOP, pady=(0, 5))
+
+        # Set a larger length for the slider to make it bigger
+        slider = tk.Scale(slider_frame, from_=from_, to=to_, orient=tk.HORIZONTAL, command=command, length=300)
+        slider.pack(side=tk.TOP, fill=tk.X, expand=True)
 
 
     def update_x_shift_ct(self, value):
@@ -960,41 +992,6 @@ class PeaksMatcherGUI(ttk.Frame):
         self.y_shift_oct = float(value)
         self.update_plot()
 
-    def update_ct_frame(self, value):
-        self.ct_frame_index = int(value)
-        titles = [
-        "Masks of Register frames",
-        "Original Register frames",
-        ]
-        # Loop through each axis and apply the patch and title
-        for i, ax in enumerate([self.ax[1],self.ax[2]]):
-            # Set the title
-            ax.clear()
-            ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
-            if i == 0:  
-                # Display the image (for demonstration, using the same image for all)
-                ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='GnBu')
-                
-            if i == 1:
-                #ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='Blues')
-                ax.imshow(self.or_ct[0, self.ct_frame_index, ...])
-            # Add rounded boundaries around the plot
-            for spine in ax.spines.values():
-                spine.set_visible(False)
-            
-            # Create a FancyBboxPatch with rounded corners
-            bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=ax.transAxes, clip_on=False)
-            ax.add_patch(bbox)
-            ax.axis('off')  
-        # Remove the previous vertical line if it exists
-        if self.ct_current_frame_line is not None:
-            self.ct_current_frame_line.remove()
-        
-        # Add the new vertical line and store its reference
-        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
-      
-        self.canvas.draw()
-        print('update ct frame')
     def on_closing(self):
         self.show_saving_orientation()
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -1316,12 +1313,47 @@ class PeaksMatcherGUI(ttk.Frame):
         cl_btn = ttk.Button(self.orientation_window, text="Close", command=self.orientation_window.destroy)
         cl_btn.pack(pady=10)
 
-
+    
+    def update_ct_frame(self, value):
+        self.ct_frame_index = int(value)
+        titles = [
+        "Segmentation of Moving frames",
+        "Raw Moving frames",
+        ]
+        # Loop through each axis and apply the patch and title
+        for i, ax in enumerate([self.ax[1],self.ax[2]]):
+            # Set the title
+            ax.clear()
+            ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
+            if i == 0:  
+                # Display the image (for demonstration, using the same image for all)
+                ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='GnBu')
+                
+            if i == 1:
+                #ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='Blues')
+                ax.imshow(self.or_ct[0, self.ct_frame_index, ...])
+            # Add rounded boundaries around the plot
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            
+            # Create a FancyBboxPatch with rounded corners
+            bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=ax.transAxes, clip_on=False)
+            ax.add_patch(bbox)
+            ax.axis('off')  
+        # Remove the previous vertical line if it exists
+        if self.ct_current_frame_line is not None:
+            self.ct_current_frame_line.remove()
+        
+        # Add the new vertical line and store its reference
+        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
+      
+        self.canvas.draw()
+        print('update ct frame')
     def update_oct_frame(self, value):
         self.oct_frame_index = int(value)
         titles = [
-        "Masks of Target frames",
-        "Original  Target frames",
+        "Segmentation of Target frames",
+        "Raw Target frames",
         ]
         # Loop through each axis and apply the patch and title
         for i, ax in enumerate([self.ax[3],self.ax[4]]):
@@ -1370,7 +1402,7 @@ class PeaksMatcherGUI(ttk.Frame):
         self.peaks_CT, self.peaks_OCT = np.array(peaks_CT), np.array(peaks_OCT)
         self.ax[0].plot(self.peaks_CT + self.x_shift_ct, self.Area_CT[self.peaks_CT] + self.y_shift_ct, "x", color='magenta', markersize=5,label='Potential bifurcation',)  # Highlighted in green
         self.ax[0].plot(self.peaks_OCT + self.x_shift_oct, self.Area_OCT[self.peaks_OCT] + self.y_shift_oct, "x", color='magenta', markersize=5)
-        self.ax[0].plot(adjusted_x_ct, adjusted_y_ct, label='Areas of Register frames', picker=5)
+        self.ax[0].plot(adjusted_x_ct, adjusted_y_ct, label='Areas of Moving frames', picker=5)
         self.ax[0].plot(adjusted_x_oct, adjusted_y_oct, label='Area of Target frames', picker=5)
         
         # Plot each peak, highlight if it's in highlighted_points
@@ -1395,30 +1427,23 @@ class PeaksMatcherGUI(ttk.Frame):
         
         self.canvas.draw()
 
-
     def on_pick(self, event):
         Area_CT, Area_OCT = self.Area_CT, self.Area_OCT
-
-        # This method is called when a plot line is clicked near a data point.
         picked_x = event.mouseevent.xdata  # Get the x-coordinate of the pick event in data coordinates.
-
-        # Determine which dataset the point belongs to
-        if event.artist.get_label() == 'Areas of Register frames':
-
-            # Adjust the picked x-value based on current shift and find the closest peak
+        
+        # Determine which dataset the point belongs to based on the label of the artist
+        label = event.artist.get_label()
+        print('label',label)
+        if label == 'Areas of Moving frames':  # Assuming the CT graph is labeled 'CT'
             adjusted_x = picked_x - self.x_shift_ct
-            # Find the peak closest to this adjusted x-value
             point_index = np.argmin(np.abs(np.arange(len(Area_CT)) - adjusted_x))
-
             self.ct_frame_index_slider.set(point_index)
 
-        else:
-  
+        elif label == 'Area of Target frames':  # Assuming the OCT graph is labeled 'OCT'
             adjusted_x = picked_x - self.x_shift_oct
             point_index = np.argmin(np.abs(np.arange(len(Area_OCT)) - adjusted_x))
-        
             self.oct_frame_index_slider.set(point_index)
-     
+
         self.update_plot()
 
 
