@@ -180,6 +180,7 @@ class PeaksMatcherGUI(ttk.Frame):
         self.oct_frames = OCT_image.detach().numpy()
         self.ct_current_frame_line = None
         self.oct_current_frame_line = None
+        self.previous_dot = None
         self.ct_frame_index = 0  # Initialize frame index for CT
         self.oct_frame_index = 0  # Initialize frame index for OCT
         self.Area_CT, self.Area_OCT = Area_CT.numpy(), Area_OCT.numpy()
@@ -1343,27 +1344,19 @@ class PeaksMatcherGUI(ttk.Frame):
         # Remove the previous vertical line if it exists
         if self.ct_current_frame_line is not None:
             self.ct_current_frame_line.remove()
-        
+            self.ct_current_frame_line = None
+        self.update_plot()
         # Add the new vertical line and store its reference
         #self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
-        
-        organized_pairs = organize_matched_pairs(self.matched_pairs)
-        if len(organized_pairs) > 0:
-           # Predict corresponding point on OCT
-           closest_pair = self.find_closest_pair(self.ct_frame_index, organized_pairs, side='oct')
-           if closest_pair is not None:
-                predicted_oct = organized_pairs[-1][1] +  closest_pair
-                print('predicted_oct',predicted_oct)
-                print('predicted_oct',predicted_oct + self.x_shift_oct)
-                print('predicted_oct_y', self.Area_OCT[predicted_oct] + self.y_shift_oct)
-                self.ax[0].plot(predicted_oct + self.x_shift_oct, self.Area_OCT[predicted_oct] + self.y_shift_oct, "o", color='red', markersize=25,alpha=0.1)
-        
+ 
 
 
         self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
         self.canvas.draw()
         print('update ct frame')
+        
     def update_oct_frame(self, value):
+        
         self.oct_frame_index = int(value)
         titles = [
         "Segmentation of Target frames",
@@ -1389,26 +1382,22 @@ class PeaksMatcherGUI(ttk.Frame):
             ax.add_patch(bbox)
             ax.axis('off')
         # Remove the previous vertical line if it exists
+        self.update_plot()
         if self.oct_current_frame_line is not None:
             self.oct_current_frame_line.remove()
-        
+            self.oct_current_frame_line = None
+
+   
         # Add the new vertical line and store its reference
         #self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
         
 
-        organized_pairs = organize_matched_pairs(self.matched_pairs)
-        if len(organized_pairs) > 0:
-           # Predict corresponding point on OCT
-           closest_pair = self.find_closest_pair(self.oct_frame_index, organized_pairs, side='ct')
-           if closest_pair is not None:
-                predicted_ct = organized_pairs[-1][0] +  closest_pair
-                print('predicted_oct',predicted_ct)
-                print('predicted_oct',predicted_ct + self.x_shift_ct)
-                print('predicted_oct_y', self.Area_CT[predicted_ct] + self.y_shift_ct)
-                self.ax[0].plot(predicted_ct + self.x_shift_ct, self.Area_CT[predicted_ct] + self.y_shift_ct, "o", color='blue', markersize=25,alpha=0.1)
         self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
+       
         self.canvas.draw()
+    
         print('update oct frame')
+        
 
    
     def update_plot(self):
@@ -1464,48 +1453,39 @@ class PeaksMatcherGUI(ttk.Frame):
             adjusted_x = picked_x - self.x_shift_ct
             point_index = np.argmin(np.abs(np.arange(len(Area_CT)) - adjusted_x))
             self.ct_frame_index_slider.set(point_index)
-
+            self.update_plot()
+            organized_pairs = organize_matched_pairs(self.matched_pairs)
+            if len(organized_pairs) > 0:
+                # Predict corresponding point on OCT
+                #self.ct_frame_index
+                closest_pair = self.find_closest_pair(int(adjusted_x), organized_pairs, side='oct')
+                if closest_pair is not None:
+                        predicted_oct = organized_pairs[-1][1] +  closest_pair
+                        print('predicted_oct',predicted_oct)
+                        print('predicted_oct',predicted_oct + self.x_shift_oct)
+                        print('predicted_oct_y', self.Area_OCT[predicted_oct] + self.y_shift_oct)
+                        self.previous_dot, = self.ax[0].plot(predicted_oct + self.x_shift_oct, self.Area_OCT[predicted_oct] + self.y_shift_oct, "o", color='red', markersize=25,alpha=0.1)
+                    
         elif label == 'Area of Target frames':  # Assuming the OCT graph is labeled 'OCT'
             adjusted_x = picked_x - self.x_shift_oct
             point_index = np.argmin(np.abs(np.arange(len(Area_OCT)) - adjusted_x))
             self.oct_frame_index_slider.set(point_index)
-
-        self.update_plot()
-    """
-    def on_pick(self, event):
-        Area_CT, Area_OCT = self.Area_CT, self.Area_OCT
-        picked_x = event.mouseevent.xdata  # Get the x-coordinate of the pick event in data coordinates.
-        organized_pairs = organize_matched_pairs(self.matched_pairs)
-        print("oranize pairs",organized_pairs)
-        label = event.artist.get_label()
-        if label == 'Areas of Moving frames':  # For CT
-            adjusted_x = picked_x - self.x_shift_ct
-            point_index = np.argmin(np.abs(np.arange(len(Area_CT)) - adjusted_x))
-            self.ct_frame_index_slider.set(point_index)
+            self.update_plot()
+            organized_pairs = organize_matched_pairs(self.matched_pairs)
             if len(organized_pairs) > 0:
                 # Predict corresponding point on OCT
-                closest_pair = self.find_closest_pair(point_index, organized_pairs, side='ct')
+                #self.oct_frame_index
+                closest_pair = self.find_closest_pair(int(adjusted_x), organized_pairs, side='ct')
                 if closest_pair is not None:
-                    predicted_oct = organized_pairs[0][1] -  closest_pair
-                    print('predicted_oct',predicted_oct)
-                    print('predicted_oct',predicted_oct + self.x_shift_oct)
-                    print('predicted_oct_y', Area_OCT[predicted_oct] + self.y_shift_oct)
-                    self.ax[0].plot(predicted_oct + self.x_shift_oct, Area_OCT[predicted_oct] + self.y_shift_oct, "o", color='red', markersize=26)
-            
-        elif label == 'Area of Target frames':  # For OCT
-            adjusted_x = picked_x - self.x_shift_oct
-            point_index = np.argmin(np.abs(np.arange(len(Area_OCT)) - adjusted_x))
-            self.oct_frame_index_slider.set(point_index)
-            
-            # Predict corresponding point on CT
-            if len(organized_pairs) > 0:
-                closest_pair = self.find_closest_pair(point_index, organized_pairs, side='oct')
-                if closest_pair is not None:
-                    predicted_ct = organized_pairs[0][0] +  closest_pair
-                    self.ax[0].plot(predicted_ct + self.x_shift_ct, Area_CT[predicted_ct] + self.y_shift_ct, "o", color='red', markersize=10)
-        self.canvas.draw()    
-        self.update_plot()
-        """
+                        predicted_ct = organized_pairs[-1][0] +  closest_pair
+                        print('predicted_oct',predicted_ct)
+                        print('predicted_oct',predicted_ct + self.x_shift_ct)
+                        print('predicted_oct_y', self.Area_CT[predicted_ct] + self.y_shift_ct)
+                
+                        self.previous_dot, = self.ax[0].plot(predicted_ct + self.x_shift_ct, self.Area_CT[predicted_ct] + self.y_shift_ct, "o", color='blue', markersize=25,alpha=0.1)
+        self.canvas.draw()
+        #self.update_plot()
+   
 
     def find_closest_pair(self, index, organized_pairs, side):
         organized_pairs = organized_pairs[-1]
