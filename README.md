@@ -58,7 +58,7 @@ coronary-artery-imaging/
 │   ├── conver_seg.ipynb/ - it's ipynb file where you can run re co-registration segmentation using Jupyter Notebook
 │
 │
-├── run_raw_only.py/ - main run file for co-registration, as input required 4 pathes(2 pathes of original raw sequences and 2 pathes of corresponding segmenntations(optional)) of data (exmaple in data/ folder).Has video output.
+├── run_raw_only.py/ - main run file for co-registration, as input required 4 pathes(2 pathes of original raw sequences and 2 pathes of corresponding segmenntations(optional) if need coregister only raw, use only=True and provide only 2 pathes of raw sequences) of data (exmaple in data/ folder). Default show=True which auto represent result of co-registration as .mp4 fromat video.
 │   ├── rigid_co.py/ - file containing all functions needed for co-registration.
 │   ├── without_seg_fun.py/ - file containing all functions needed for co-registration without segmenation sequnces.
 │
