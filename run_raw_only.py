@@ -2,6 +2,13 @@ from rigid_co import *
 import torch
 import numpy as np
 from without_seg_fun import *
+#vedio mp4 output#
+import imageio
+import numpy as np
+import subprocess
+import os
+import platform
+#vedio mp4 output#
 def co_registration_patient_only(patient_id=None,moving_path_mask=None,moving_path_raw=None,target_path_mask=None,target_path_raw=None,only=False):
 
     # load original data 
@@ -205,6 +212,39 @@ def co_registration_patient_only(patient_id=None,moving_path_mask=None,moving_pa
     bil.append(moving_image[:,:,l[-1][0]:])
     br = np.concatenate((bil),axis=2)
     print(OCT_selected_indices_shift)
+    show = True
+    if show:
+        images1 = (fixed_image * 255).astype(np.uint8)
+        images2 = (br * 255).astype(np.uint8)
+        # Get the dimensions of the first frame from each sequence
+        channels1 = images1.shape[-1]
+        channels2 = images2.shape[-1]
+
+        # If the number of channels is different, make them the same
+        if channels1 > channels2:
+            images1 = images1[..., :channels2]
+        elif channels2 > channels1:
+            images2 = images2[..., :channels1]
+        combined_frames = np.hstack((images1, images2)) 
+        print(f"Combined frames shape: {combined_frames.shape}")
+        # Save as an MP4 video
+        fps = 30  # frames per second
+        with imageio.get_writer('output.mp4', fps=fps, macro_block_size=1) as writer:
+            for frame in range(images1.shape[-1]):
+                writer.append_data(combined_frames[:,:,frame])
+
+        print("Video saved as output.mp4")
+
+        # Path to your MP4 file
+        video_path = "output.mp4"
+
+        # Check the operating system
+        if platform.system() == "Windows":
+            os.startfile(video_path)
+        elif platform.system() == "Darwin":  # macOS
+            subprocess.call(["open", video_path])
+        else:  # Linux and other UNIX-like systems
+            subprocess.call(["xdg-open", video_path])
     return CT_selected_indices_shift, OCT_selected_indices_shift, fixed_image, br, organized_pairs,ang_big,ct_data_or 
 
 if __name__ == '__main__':
