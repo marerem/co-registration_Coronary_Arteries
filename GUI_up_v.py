@@ -17,6 +17,7 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 import cv2
 import numpy as np
+from matplotlib.colors import LinearSegmentedColormap
 
 distinct_colors_extended = [
     '#FF0000',  # red
@@ -168,8 +169,9 @@ def organize_matched_pairss(saving_orientation,saving_orientation_angl_show):
 class PeaksMatcherGUI(ttk.Frame):
     def __init__(self, master, Area_CT=None, Area_OCT=None, CT_image=None, OCT_image=None, or_ct=None, or_oct=None):
         super().__init__(master)
-        
+        self.master.attributes('-fullscreen', True)
         # Initializing variables
+                # Increase button size and text globally using ttk.Style
         self.angle_between_common = 0
         self.vector_ct = []
         self.vector_oct = []
@@ -208,8 +210,8 @@ class PeaksMatcherGUI(ttk.Frame):
         # Create Treeview in the pairs frame
         self.pairs_tree = ttk.Treeview(self.pairs_frame, columns=("CT", "OCT"))
         self.pairs_tree.heading("#0", text="ID", anchor=tk.W)
-        self.pairs_tree.heading("CT", text="Moving ")
-        self.pairs_tree.heading("OCT", text="Target pair")
+        self.pairs_tree.heading("CT", text="Moving")
+        self.pairs_tree.heading("OCT", text="Target")
 
         # Format the columns
         self.pairs_tree.column("#0", anchor=tk.W, width=40)
@@ -222,9 +224,10 @@ class PeaksMatcherGUI(ttk.Frame):
         # Add buttons to the pairs_frame
         self.show_btn = ttk.Button(self.pairs_frame, text='Show Selected Pair', command=self.on_item_action)
         self.show_btn.pack(pady=10)
+   
         self.delete_btn = ttk.Button(self.pairs_frame, text='Delete Selected Pair', command=self.delete_selected_pair)
         self.delete_btn.pack(pady=10)
-
+       
         # Initialize other widgets and functionality
         self.create_widgets()
         
@@ -246,14 +249,19 @@ class PeaksMatcherGUI(ttk.Frame):
                 self.visualize_pair(item_values)
 
     def visualize_pair(self,item_values):
-        
+        self.plot_type = tk.StringVar(value='manual assignment')  # Set 'manual assignment' as the default plot type
+    
         # Add RadioButtons to choose plot type
         self.plot_window = tk.Toplevel(self)
         self.plot_window.title("Orientation")
+        
         #self.save_btn = ttk.Button(self.plot_window, text='Save orientation', command=self.save_current_orientation)
         #self.save_btn.pack(pady=10)
         self.fig_or, self.axes = plt.subplots(2, 1, figsize=(8, 6))
-        
+        self.fig_or.text(0.05, 0.5,"Step 2: Assign the direction for selected landmarks.\nChoose between default algorithms or manually \nassign by clicking on the plot.",
+                     horizontalalignment='left', verticalalignment='center',
+                     fontsize=14, fontname='Arial', color='white',
+                     bbox=dict(boxstyle="round,pad=0.7", facecolor='#413c3a', edgecolor='none'))
         radio_frame = tk.Frame(self.plot_window)
         radio_frame.pack()
         options = [
@@ -263,6 +271,7 @@ class PeaksMatcherGUI(ttk.Frame):
         ]
 
         for text, value in options:
+            
             radio = tk.Radiobutton(radio_frame, text=text, variable=self.plot_type, value=value,
                                    command=lambda: self.show_plots(item_values))
             radio.pack(side=tk.LEFT)
@@ -285,10 +294,9 @@ class PeaksMatcherGUI(ttk.Frame):
         self.canvass.get_tk_widget().pack(fill=tk.BOTH, expand=tk.YES)
         self.save_btn = ttk.Button(self.plot_window, text='Save orientation', command=self.save_current_orientation)
         self.save_btn.pack(pady=10)
- 
-       
-      
+        self.show_plots(item_values)
     
+       
     def save_current_orientation(self):
         if self.plot_type.get() == 'manual assignment':
             self.saving_orientation_angl_show['ct'][self.ct_value]= [self.angle_between_common,self.direction]
@@ -302,17 +310,32 @@ class PeaksMatcherGUI(ttk.Frame):
             self.saving_orientation_angl_show['ct'][self.ct_value]= [self.angle_between_common,self.direction]
             
         
+        self.highlight_rows_with_ct_19()
         print("Save orientation button clicked",self.plot_type.get(),self.ct_value,self.oct_value)
+        
         self.show_save_popup()
+        
         self.plot_window.destroy()
-
+    def highlight_rows_with_ct_19(self):
+        """Highlight rows where the CT value is 19."""
+        self.pairs_tree.tag_configure('highlight', background='#90EE90')
+        ct_keys = self.saving_orientation['ct'].keys()
+        ct_keys = [int(i) for i in ct_keys]
+        print("CT keys",ct_keys)
+        # Iterate through all the items in the Treeview
+        for item in self.pairs_tree.get_children():
+            ct_value = self.pairs_tree.item(item, 'values')[0]  # Get the CT value
+            print("CT value",ct_value)
+            if int(ct_value) in ct_keys:  # Check if the CT value is 19
+                print("CT print",ct_value)
+                self.pairs_tree.item(item, tags=('highlight',))
     def show_save_popup(self):
         root = tk.Tk()
         root.withdraw()  # Hide the root window
         messagebox.showinfo("Save Points", "Points have been saved successfully!")
         root.destroy()
     def show_plots(self,item_values):
-        
+ 
         self.axes[0].cla()
         self.axes[0].axis('off')
         self.axes[1].cla()
@@ -820,7 +843,7 @@ class PeaksMatcherGUI(ttk.Frame):
         #im3 = axe.imshow(self.oct_frames[0, oct_value , ...], cmap=plt.cm.gray,interpolation='nearest')
         #im4 = axe.imshow(self.or_oct[0, oct_value , ...], cmap=plt.cm.viridis, alpha=0.7, interpolation='bilinear')
         image_data = self.ct_frames[0,ct_value,...] if image_type == 'ct' else self.oct_frames[0,oct_value,...]
-        cmap = 'GnBu' if image_type == 'ct' else 'Oranges'
+        cmap = 'PuBu' if image_type == 'ct' else 'Oranges'
         #axe.imshow(image_data, cmap=cmap)
         im1 = self.axes[0].imshow(self.ct_frames[0, ct_value, ...], cmap=plt.cm.gray,interpolation='nearest')
         im2 = self.axes[0].imshow(self.or_ct[0, ct_value, ...], cmap=plt.cm.viridis, alpha=0.7, interpolation='bilinear')  
@@ -858,11 +881,17 @@ class PeaksMatcherGUI(ttk.Frame):
         widget_frame = ttk.Frame(self)
         widget_frame.pack(fill=tk.X)
         self.create_sliders(slider_frame,widget_frame)
+
+
         # Plotting Frame
         self.plot_frame = ttk.Frame(self)
         self.plot_frame.pack(fill=tk.BOTH, expand=tk.YES)
-        self.figg = plt.figure(figsize=(12, 6))
 
+        self.figg = plt.figure(figsize=(12, 6))
+        self.figg.text(0.5, 0.95, "Step 1: Select matching frame pairs between the target and moving sequence.",
+                   horizontalalignment='center', verticalalignment='top', 
+                   fontsize=14, fontname='Arial', color='white',
+                   bbox=dict(boxstyle="round,pad=0.5", facecolor='#413c3a', edgecolor='none'))  # #e30614 Added transparency with alpha=0.6
         titles = [
         "Masks of Register frames",
         "Original Register frames",
@@ -885,7 +914,7 @@ class PeaksMatcherGUI(ttk.Frame):
             if i == 0 or i == 1:
                 
                 # Display the image (for demonstration, using the same image for all)
-                ax.imshow(self.ct_frames[0][self.ct_frame_index], cmap='GnBu')
+                ax.imshow(self.ct_frames[0][self.ct_frame_index], cmap='PuBu')
             if i == 2 or i == 3:
                 ax.imshow(self.oct_frames[0][self.oct_frame_index], cmap='Oranges')
             # Add rounded boundaries around the plot
@@ -992,12 +1021,24 @@ class PeaksMatcherGUI(ttk.Frame):
     def update_y_shift_oct(self, value):
         self.y_shift_oct = float(value)
         self.update_plot()
+    def check_all_ct_values(self):
+        """Check if all CT values are in the saving_orientation['ct'] list."""
+        ct_keys = self.saving_orientation['ct']
 
+        # Iterate through all the items in the Treeview
+        for item in self.pairs_tree.get_children():
+            ct_value = self.pairs_tree.item(item, 'values')[0]  # Get the CT value
+            if int(ct_value) not in ct_keys:  # If CT value is not in the list
+                return False
+        return True
     def on_closing(self):
-        self.show_saving_orientation()
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            
-            self.master.destroy()
+        """Handle window closing event."""
+        # Check if all CT values have orientations selected
+        if not self.check_all_ct_values():
+            messagebox.showwarning("Missing Orientation", "Please select orientation for all pairs.")
+        else:
+            if messagebox.askokcancel("Quit", "Do you want to quit?"):
+                self.destroy()
 
 
     def show_saving_orientation(self):
@@ -1134,7 +1175,7 @@ class PeaksMatcherGUI(ttk.Frame):
                 self.axs[idx, 0].clear()
                 self.axs[idx, 1].clear()
                 
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')  # Adjust key as necessary
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')  # Adjust key as necessary
                 self.axs[idx, 0].arrow(start_point_ct[0], start_point_ct[1],end_point_ct[0] - start_point_ct[0], end_point_ct[1] - start_point_ct[1],
                      head_width=5, head_length=10, fc='red', ec='red')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')
@@ -1160,7 +1201,7 @@ class PeaksMatcherGUI(ttk.Frame):
 
 
 
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].plot(centroid_ct[1], centroid_ct[0], 'ro')
                 self.axs[idx, 0].arrow(centroid_ct[1], centroid_ct[0], direction_vertex_ct[1] - centroid_ct[1], direction_vertex_ct[0] - centroid_ct[0], 
                           head_width=5, head_length=10, fc='r', ec='r', label='Orientation')
@@ -1186,7 +1227,7 @@ class PeaksMatcherGUI(ttk.Frame):
                 self.axs[idx, 0].clear()
                 self.axs[idx, 1].clear()
                 center_of_mass_ct, x1_major_ct, x0_ct, y1_major_ct, y0_ct, x2_major_ct, y2_major_ct = pca(self.ct_frames[0, i, ...])
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')
                 self.axs[idx, 0].plot(center_of_mass_ct[1], center_of_mass_ct[0], 'go')
                 self.axs[idx, 0].arrow(center_of_mass_ct[1], center_of_mass_ct[0], x1_major_ct - x0_ct, y1_major_ct - y0_ct, head_width=10, head_length=15, fc='blue', ec='blue', label='Major Axis (Positive)')
@@ -1202,7 +1243,7 @@ class PeaksMatcherGUI(ttk.Frame):
                 self.axs[idx, 0].clear()
                 self.axs[idx, 1].clear()
                 center_of_mass_ct,change_point_start,change_point_end,dx_ct,dy_ct = pca_change_direction(self.ct_frames[0, i, ...])
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')
                 self.axs[idx, 0].plot(center_of_mass_ct[1], center_of_mass_ct[0], 'go')
                 self.axs[idx, 0].arrow(center_of_mass_ct[1], center_of_mass_ct[0], dx_ct, dy_ct,
@@ -1223,7 +1264,7 @@ class PeaksMatcherGUI(ttk.Frame):
                 self.axs[idx, 0].clear()
                 
                 center_of_mass_ct,farthest_point_ct,y0_ct,x0_ct,y1,x1,rr,cc = fit_ellipse(self.ct_frames[0, i, ...])
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')
                 self.axs[idx, 0].plot(center_of_mass_ct[1], center_of_mass_ct[0], 'go')
                 self.axs[idx, 0].arrow(y0_ct, x0_ct, y1 - y0_ct, x1 - x0_ct, head_width=5, head_length=10, fc='r', ec='r', label='Orientation')
@@ -1243,7 +1284,7 @@ class PeaksMatcherGUI(ttk.Frame):
             if self.saving_orientation['ct'][i][0] == 'convex_hull':
                 self.axs[idx, 0].clear()
                 self.axs[idx, 1].clear()
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')
                 intersection_ct,longest_edges, coords, hull = convex_hull(self.ct_frames[0, i, ...])
                 centroid_ct = np.mean(coords, axis=0)
@@ -1268,7 +1309,7 @@ class PeaksMatcherGUI(ttk.Frame):
             if self.saving_orientation['ct'][i][0] == 'triangle':
                 self.axs[idx, 0].clear()
                 self.axs[idx, 1].clear()
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')
                 centroid_ct, triangle_points, longest_edge_vertex_ct = triangle(self.ct_frames[0, i, ...])
                 self.axs[idx, 0].plot(centroid_ct[1], centroid_ct[0], 'ro')
@@ -1286,7 +1327,7 @@ class PeaksMatcherGUI(ttk.Frame):
             if self.saving_orientation['ct'][i][0] == 'triangle_max_edges':
                 self.axs[idx, 0].clear()
                 self.axs[idx, 1].clear()
-                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='GnBu')
+                self.axs[idx, 0].imshow(self.ct_frames[0, i, ...], cmap='PuBu')
                 self.axs[idx, 0].set_title(f'Bifurcation pair # {idx} frame {i}')  
                 centroid_ct, triangle_points, common_vertex_ct = triangle_max_edges(self.ct_frames[0, i, ...])
                 self.axs[idx, 0].plot(centroid_ct[1], centroid_ct[0], 'ro')
@@ -1321,6 +1362,11 @@ class PeaksMatcherGUI(ttk.Frame):
         "Segmentation of Moving frames",
         "Raw Moving frames",
         ]
+        # Define a custom fire colormap
+        fire_colormap = LinearSegmentedColormap.from_list(
+            'fire', 
+            ['#090100','#220203', '#3f1717','#a1551b','#dc9f2a']
+        )
         # Loop through each axis and apply the patch and title
         for i, ax in enumerate([self.ax[1],self.ax[2]]):
             # Set the title
@@ -1328,7 +1374,7 @@ class PeaksMatcherGUI(ttk.Frame):
             ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
             if i == 0:  
                 # Display the image (for demonstration, using the same image for all)
-                ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='GnBu')
+                ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='PuBu')
                 
             if i == 1:
                 #ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='Blues')
@@ -1352,8 +1398,10 @@ class PeaksMatcherGUI(ttk.Frame):
 
 
         self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
+        self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
         self.canvas.draw()
         print('update ct frame')
+        
         
     def update_oct_frame(self, value):
         
@@ -1362,6 +1410,13 @@ class PeaksMatcherGUI(ttk.Frame):
         "Segmentation of Target frames",
         "Raw Target frames",
         ]
+
+        # Define a custom fire colormap
+        fire_colormap = LinearSegmentedColormap.from_list(
+            'fire', 
+            ['#090100','#220203', '#3f1717','#a1551b','#dc9f2a']
+        )
+   
         # Loop through each axis and apply the patch and title
         for i, ax in enumerate([self.ax[3],self.ax[4]]):
             # Set the title
@@ -1393,10 +1448,11 @@ class PeaksMatcherGUI(ttk.Frame):
         
 
         self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
-       
+        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
         self.canvas.draw()
     
         print('update oct frame')
+       
         
 
    
@@ -1417,8 +1473,8 @@ class PeaksMatcherGUI(ttk.Frame):
         self.peaks_CT, self.peaks_OCT = np.array(peaks_CT), np.array(peaks_OCT)
         self.ax[0].plot(self.peaks_CT + self.x_shift_ct, self.Area_CT[self.peaks_CT] + self.y_shift_ct, "x", color='magenta', markersize=5,label='Potential bifurcation',)  # Highlighted in green
         self.ax[0].plot(self.peaks_OCT + self.x_shift_oct, self.Area_OCT[self.peaks_OCT] + self.y_shift_oct, "x", color='magenta', markersize=5)
-        self.ax[0].plot(adjusted_x_ct, adjusted_y_ct, label='Areas of Moving frames', picker=5)
-        self.ax[0].plot(adjusted_x_oct, adjusted_y_oct, label='Area of Target frames', picker=5)
+        self.ax[0].plot(adjusted_x_ct, adjusted_y_ct, label='Areas of Moving frames', picker=5,color='#033759')
+        self.ax[0].plot(adjusted_x_oct, adjusted_y_oct, label='Areas of Target frames', picker=5,color='#d16b31')
         
         # Plot each peak, highlight if it's in highlighted_points
         organized_pairs = organize_matched_pairs(self.matched_pairs)
@@ -1439,7 +1495,7 @@ class PeaksMatcherGUI(ttk.Frame):
         self.ax[0].tick_params(axis='both', which='major', labelsize=10)  # Updated tick labels font size
         self.ax[0].xaxis.label.set_size(8)  # Updated x-axis label font size
         self.ax[0].yaxis.label.set_size(8)  # Updated y-axis label font size
-        
+        self.highlight_rows_with_ct_19()
         self.canvas.draw()
 
     def on_pick(self, event):
@@ -1466,7 +1522,7 @@ class PeaksMatcherGUI(ttk.Frame):
                         print('predicted_oct_y', self.Area_OCT[predicted_oct] + self.y_shift_oct)
                         self.previous_dot, = self.ax[0].plot(predicted_oct + self.x_shift_oct, self.Area_OCT[predicted_oct] + self.y_shift_oct, "o", color='red', markersize=25,alpha=0.1)
                     
-        elif label == 'Area of Target frames':  # Assuming the OCT graph is labeled 'OCT'
+        elif label == 'Areas of Target frames':  # Assuming the OCT graph is labeled 'OCT'
             adjusted_x = picked_x - self.x_shift_oct
             point_index = np.argmin(np.abs(np.arange(len(Area_OCT)) - adjusted_x))
             self.oct_frame_index_slider.set(point_index)
