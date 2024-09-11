@@ -74,3 +74,22 @@ coronary-artery-imaging/
 ├── README.md
 
 '''
+
+
+Create local App on MacOS OS and Windows.
+1. Navigate to the directory where your app will be 
+cd /Users/YourUserName/Desktop/
+
+2. Create .command file there with script (see example file RAG.command) / .bat file and Change "Save as type" to "All Files".
+@echo off
+cd /d C:\path\to\your\script\
+python script.py
+pause
+
+
+
+3. Use the following command to make the .command file executable
+
+chmod +x RAG.command
+
+
