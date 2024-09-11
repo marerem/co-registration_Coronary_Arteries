@@ -167,7 +167,7 @@ def organize_matched_pairss(saving_orientation,saving_orientation_angl_show):
     print(pairs,ang_big)
     return pairs,ang_big,an
 class PeaksMatcherGUI(ttk.Frame):
-    def __init__(self, master, Area_CT=None, Area_OCT=None, CT_image=None, OCT_image=None, or_ct=None, or_oct=None):
+    def __init__(self, master, Area_CT=None, Area_OCT=None, CT_image=None, OCT_image=None, or_ct=None, or_oct=None,only=False):
         super().__init__(master)
         self.master.attributes('-fullscreen', True)
         # Initializing variables
@@ -197,7 +197,7 @@ class PeaksMatcherGUI(ttk.Frame):
         self.saving_orientation = {'oct': {}, 'ct': {}}
         self.saving_orientation_angl_show = {'ct': {}}
         self.points = {'ct': [], 'oct': []}
-        
+        self.Only = only
         # Layout setup
         self.pack(fill=tk.BOTH, expand=tk.YES)
 
@@ -229,7 +229,10 @@ class PeaksMatcherGUI(ttk.Frame):
         self.delete_btn.pack(pady=10)
        
         # Initialize other widgets and functionality
-        self.create_widgets()
+        if self.Only:
+            self.create_widgets_only()
+        else:
+            self.create_widgets()
         
         # Protocols for closing the main window
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -250,7 +253,7 @@ class PeaksMatcherGUI(ttk.Frame):
 
     def visualize_pair(self,item_values):
         self.plot_type = tk.StringVar(value='manual assignment')  # Set 'manual assignment' as the default plot type
-    
+ 
         # Add RadioButtons to choose plot type
         self.plot_window = tk.Toplevel(self)
         self.plot_window.title("Orientation")
@@ -258,22 +261,31 @@ class PeaksMatcherGUI(ttk.Frame):
         #self.save_btn = ttk.Button(self.plot_window, text='Save orientation', command=self.save_current_orientation)
         #self.save_btn.pack(pady=10)
         self.fig_or, self.axes = plt.subplots(2, 1, figsize=(8, 6))
-        self.fig_or.text(0.05, 0.5,"Step 2: Assign the direction for selected landmarks.\nChoose between default algorithms or manually \nassign by clicking on the plot.",
+        if self.Only==True:
+            self.fig_or.text(0.05, 0.5,"Step 2: Assign the direction for selected landmarks.\nManually assign by clicking on the plot.",
                      horizontalalignment='left', verticalalignment='center',
                      fontsize=14, fontname='Arial', color='white',
                      bbox=dict(boxstyle="round,pad=0.7", facecolor='#413c3a', edgecolor='none'))
+        else:
+            self.fig_or.text(0.05, 0.5,"Step 2: Assign the direction for selected landmarks.\nChoose between default algorithms or manually \nassign by clicking on the plot.",
+                     horizontalalignment='left', verticalalignment='center',
+                     fontsize=14, fontname='Arial', color='white',
+                     bbox=dict(boxstyle="round,pad=0.7", facecolor='#413c3a', edgecolor='none'))
+
         radio_frame = tk.Frame(self.plot_window)
         radio_frame.pack()
-        options = [
-            ("Circle", 'circle'), ("PCA", 'pca'), ("PCA Change Direction", 'pca_change_dir'),
-            ("Ellipse", 'ellipse'), ("Convex Hull", 'convex_hull'), ("Triangle", 'triangle'),
-            ("Triangle Max Edges", 'triangle_max_edges'), ("Manual Assignment", 'manual assignment')
-        ]
+        if self.Only==True:
+           options = [("Manual Assignment", 'manual assignment')]
+        else:
+            options = [
+                ("Circle", 'circle'), ("PCA", 'pca'), ("PCA Change Direction", 'pca_change_dir'),
+                ("Ellipse", 'ellipse'), ("Convex Hull", 'convex_hull'), ("Triangle", 'triangle'),
+                ("Triangle Max Edges", 'triangle_max_edges'), ("Manual Assignment", 'manual assignment')
+            ]
 
         for text, value in options:
-            
             radio = tk.Radiobutton(radio_frame, text=text, variable=self.plot_type, value=value,
-                                   command=lambda: self.show_plots(item_values))
+                                command=lambda: self.show_plots(item_values))
             radio.pack(side=tk.LEFT)
 
 
@@ -335,7 +347,7 @@ class PeaksMatcherGUI(ttk.Frame):
         messagebox.showinfo("Save Points", "Points have been saved successfully!")
         root.destroy()
     def show_plots(self,item_values):
- 
+    
         self.axes[0].cla()
         self.axes[0].axis('off')
         self.axes[1].cla()
@@ -722,9 +734,9 @@ class PeaksMatcherGUI(ttk.Frame):
             print(f'Angle between the common vertex orientations: {self.angle_between_common:.2f} degrees')
 
         elif self.plot_type.get() == 'manual assignment':
-            im1 = self.axes[0].imshow(self.ct_frames[0, ct_value, ...], cmap=plt.cm.gray,interpolation='nearest')
+            #im1 = self.axes[0].imshow(self.ct_frames[0, ct_value, ...], cmap=plt.cm.gray,interpolation='nearest')
             im2 = self.axes[0].imshow(self.or_ct[0, ct_value, ...], cmap=plt.cm.viridis, alpha=0.7, interpolation='bilinear')  
-            im3 = self.axes[1].imshow(self.oct_frames[0, oct_value , ...], cmap=plt.cm.gray,interpolation='nearest')
+            #im3 = self.axes[1].imshow(self.oct_frames[0, oct_value , ...], cmap=plt.cm.gray,interpolation='nearest')
             im4 = self.axes[1].imshow(self.or_oct[0, oct_value , ...], cmap=plt.cm.viridis, alpha=0.7, interpolation='bilinear')
             #self.axes[0].imshow(self.ct_frames[0, ct_value, ...], cmap='GnBu')
             #self.axes[1].imshow(self.oct_frames[0, oct_value , ...], cmap='Oranges')
@@ -845,10 +857,10 @@ class PeaksMatcherGUI(ttk.Frame):
         image_data = self.ct_frames[0,ct_value,...] if image_type == 'ct' else self.oct_frames[0,oct_value,...]
         cmap = 'PuBu' if image_type == 'ct' else 'Oranges'
         #axe.imshow(image_data, cmap=cmap)
-        im1 = self.axes[0].imshow(self.ct_frames[0, ct_value, ...], cmap=plt.cm.gray,interpolation='nearest')
-        im2 = self.axes[0].imshow(self.or_ct[0, ct_value, ...], cmap=plt.cm.viridis, alpha=0.7, interpolation='bilinear')  
-        im3 = self.axes[1].imshow(self.oct_frames[0, oct_value , ...], cmap=plt.cm.gray,interpolation='nearest')
-        im4 = self.axes[1].imshow(self.or_oct[0, oct_value , ...], cmap=plt.cm.viridis, alpha=0.7, interpolation='bilinear')
+        #im1 = self.axes[0].imshow(self.ct_frames[0, ct_value, ...], cmap=plt.cm.gray,interpolation='nearest')
+        im2 = self.axes[0].imshow(self.or_ct[0, ct_value, ...], cmap=plt.cm.viridis, interpolation='bilinear')  
+        #im3 = self.axes[1].imshow(self.oct_frames[0, oct_value , ...], cmap=plt.cm.gray,interpolation='nearest')
+        im4 = self.axes[1].imshow(self.or_oct[0, oct_value , ...], cmap=plt.cm.viridis, interpolation='bilinear')
 
         #plt.show()
    
@@ -911,12 +923,80 @@ class PeaksMatcherGUI(ttk.Frame):
         for i, ax in enumerate(self.ax[1:]):
             # Set the title
             ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
-            if i == 0 or i == 1:
-                
+            if i == 0:
                 # Display the image (for demonstration, using the same image for all)
                 ax.imshow(self.ct_frames[0][self.ct_frame_index], cmap='PuBu')
-            if i == 2 or i == 3:
+            if i == 1:
+                ax.imshow(self.or_ct[0, self.oct_frame_index, ...])
+            if i == 2:
                 ax.imshow(self.oct_frames[0][self.oct_frame_index], cmap='Oranges')
+            if i == 3:
+                ax.imshow(self.or_oct[0, self.oct_frame_index, ...])
+            # Add rounded boundaries around the plot
+            for spine in ax.spines.values():
+                spine.set_visible(False)
+            
+            # Create a FancyBboxPatch with rounded corners
+            bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=ax.transAxes, clip_on=False)
+            ax.add_patch(bbox)
+            ax.axis('off')
+      
+ 
+        self.canvas = FigureCanvasTkAgg(self.figg, master=self.plot_frame)
+        self.canvas_widget = self.canvas.get_tk_widget()
+        self.canvas_widget.pack(fill=tk.BOTH, expand=tk.YES)
+        # Initial plot
+        # Widget Frame for sliders (place below plots)  # Updated
+
+        self.canvas.mpl_connect('pick_event', self.on_pick)
+        self.update_plot()
+        self.add_pairs_button = tk.Button(self.plot_frame, text="Add Pairs", command=self.add_pairs)
+        self.add_pairs_button.pack(pady=20)
+    def create_widgets_only(self):
+        # Slider Frame for adjustments
+        print("Creating widgets...")
+        slider_frame = ttk.Frame(self)
+        slider_frame.pack(fill=tk.Y)
+        # Widget Frame for sliders
+        widget_frame = ttk.Frame(self)
+        widget_frame.pack(fill=tk.X)
+        self.create_sliders(slider_frame,widget_frame)
+
+
+        # Plotting Frame
+        self.plot_frame = ttk.Frame(self)
+        self.plot_frame.pack(fill=tk.BOTH, expand=tk.YES)
+
+        self.figg = plt.figure(figsize=(12, 6))
+        self.figg.text(0.5, 0.95, "Step 1: Select matching frame pairs between the target and moving sequence.",
+                   horizontalalignment='center', verticalalignment='top', 
+                   fontsize=14, fontname='Arial', color='white',
+                   bbox=dict(boxstyle="round,pad=0.5", facecolor='#413c3a', edgecolor='none'))  # #e30614 Added transparency with alpha=0.6
+        titles = [
+        "Register frames",
+        "Target frames"
+        ]
+        gs = GridSpec(2, 4, figure=self.figg, wspace=0.1, hspace=0.2)  # Adjust wspace and hspace as needed
+  
+        self.ax = [
+            self.figg.add_subplot(gs[0, :]),  # Full row plot (first plot)
+            self.figg.add_subplot(gs[1, 0:2]),
+            self.figg.add_subplot(gs[1, 2:4])  # Last plot (fourth plot)
+        ]
+
+        # Loop through each axis and apply the patch and title
+        # Loop through each axis and apply the patch and title
+        for i, ax in enumerate(self.ax[1:]):
+            # Set the title for the corresponding plot
+            ax.text(0.5, -0.1, titles[i], horizontalalignment='center', fontsize=12, fontname='Arial', transform=ax.transAxes)
+
+            if i == 0:  # First plot
+                #ax.imshow(self.ct_frames[0][self.ct_frame_index])
+                ax.imshow(self.or_ct[0, self.oct_frame_index, ...])
+            elif i == 1:  # Second plot (which is the last plot in the original layout)
+                #ax.imshow(self.oct_frames[0][self.oct_frame_index])
+                ax.imshow(self.or_oct[0, self.oct_frame_index, ...])
+
             # Add rounded boundaries around the plot
             for spine in ax.spines.values():
                 spine.set_visible(False)
@@ -989,10 +1069,26 @@ class PeaksMatcherGUI(ttk.Frame):
         self.ct_frame_index_slider.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
 
         # Slider for OCT frames
-        self.oct_frame_index_slider = tk.Scale(widget_frame, label="Target Frame Index",
+        if self.Only:
+            self.ct_frame_index_slider = tk.Scale(widget_frame, label="Moving Frame Index",
+                                            from_=0, to=self.ct_frames.shape[1] - 1,
+                                            orient=tk.HORIZONTAL, command=self.update_ct_frame_only)
+            self.ct_frame_index_slider.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+
+            self.oct_frame_index_slider = tk.Scale(widget_frame, label="Target Frame Index",
                                             from_=0, to=self.oct_frames.shape[1] - 1,
-                                            orient=tk.HORIZONTAL, command=self.update_oct_frame)
-        self.oct_frame_index_slider.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+                                            orient=tk.HORIZONTAL, command=self.update_oct_frame_only)
+            self.oct_frame_index_slider.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+        else:
+            self.ct_frame_index_slider = tk.Scale(widget_frame, label="Moving Frame Index",
+                                            from_=0, to=self.ct_frames.shape[1] - 1,
+                                            orient=tk.HORIZONTAL, command=self.update_ct_frame)
+            self.ct_frame_index_slider.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+
+            self.oct_frame_index_slider = tk.Scale(widget_frame, label="Target Frame Index",
+                                                from_=0, to=self.oct_frames.shape[1] - 1,
+                                                orient=tk.HORIZONTAL, command=self.update_oct_frame)
+            self.oct_frame_index_slider.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
 
     def create_slider_with_label(self, parent, label_text, from_, to_, command, row, column):
         slider_frame = ttk.Frame(parent)
@@ -1038,7 +1134,9 @@ class PeaksMatcherGUI(ttk.Frame):
             messagebox.showwarning("Missing Orientation", "Please select orientation for all pairs.")
         else:
             if messagebox.askokcancel("Quit", "Do you want to quit?"):
+                self.quit() 
                 self.destroy()
+
 
 
     def show_saving_orientation(self):
@@ -1401,7 +1499,43 @@ class PeaksMatcherGUI(ttk.Frame):
         self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
         self.canvas.draw()
         print('update ct frame')
-        
+
+    def update_ct_frame_only(self, value):
+        self.ct_frame_index = int(value)
+        # Define a custom fire colormap
+        fire_colormap = LinearSegmentedColormap.from_list(
+            'fire', 
+            ['#090100','#220203', '#3f1717','#a1551b','#dc9f2a']
+        )
+
+        # Set the title
+        self.ax[1].clear()
+        self.ax[1].text(0.5, -0.1, "Moving frames", horizontalalignment='center', fontsize=12, fontname='Arial', transform=self.ax[1].transAxes)
+
+        #ax.imshow(self.ct_frames[0, self.ct_frame_index, ...], cmap='Blues')
+        self.ax[1].imshow(self.or_ct[0, self.ct_frame_index, ...])
+        # Add rounded boundaries around the plot
+        for spine in self.ax[1].spines.values():
+            spine.set_visible(False)
+            
+        # Create a FancyBboxPatch with rounded corners
+        bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=self.ax[1].transAxes, clip_on=False)
+        self.ax[1].add_patch(bbox)
+        self.ax[1].axis('off')  
+        # Remove the previous vertical line if it exists
+        if self.ct_current_frame_line is not None:
+            self.ct_current_frame_line.remove()
+            self.ct_current_frame_line = None
+        self.update_plot()
+        # Add the new vertical line and store its reference
+        #self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
+ 
+
+
+        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
+        self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
+        self.canvas.draw()
+        print('update ct frame')      
         
     def update_oct_frame(self, value):
         
@@ -1453,7 +1587,46 @@ class PeaksMatcherGUI(ttk.Frame):
     
         print('update oct frame')
        
+    def update_oct_frame_only(self, value):
         
+        self.oct_frame_index = int(value)
+
+        # Define a custom fire colormap
+        fire_colormap = LinearSegmentedColormap.from_list(
+            'fire', 
+            ['#090100','#220203', '#3f1717','#a1551b','#dc9f2a']
+        )
+   
+        # Loop through each axis and apply the patch and title
+
+        # Set the title
+        self.ax[2].clear()
+        self.ax[2].text(0.5, -0.1, "Target frames", horizontalalignment='center', fontsize=12, fontname='Arial', transform=self.ax[2].transAxes)
+        self.ax[2].imshow(self.or_oct[0, self.oct_frame_index, ...])
+        # Add rounded boundaries around the plot
+        for spine in self.ax[1].spines.values():
+            spine.set_visible(False)
+            
+        # Create a FancyBboxPatch with rounded corners
+        bbox = patches.FancyBboxPatch((0.1, 0.1), 0.8, 0.8, boxstyle="round,pad=0.1", linewidth=1, edgecolor='black', facecolor='none', transform=self.ax[2].transAxes, clip_on=False)
+        self.ax[2].add_patch(bbox)
+        self.ax[2].axis('off')
+        # Remove the previous vertical line if it exists
+        self.update_plot()
+        if self.oct_current_frame_line is not None:
+            self.oct_current_frame_line.remove()
+            self.oct_current_frame_line = None
+
+   
+        # Add the new vertical line and store its reference
+        #self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
+        
+
+        self.oct_current_frame_line = self.ax[0].axvline(self.oct_frame_index+self.x_shift_oct, color='red', linestyle='--', label='Current Frame')
+        self.ct_current_frame_line = self.ax[0].axvline(self.ct_frame_index+self.x_shift_ct, color='blue', linestyle='--', label='Current Frame')
+        self.canvas.draw()
+    
+        print('update oct frame')        
 
    
     def update_plot(self):
