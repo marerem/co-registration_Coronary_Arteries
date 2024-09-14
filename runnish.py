@@ -11,46 +11,43 @@ import numpy as np
 import subprocess
 import os
 import platform
-
+import threading
 ####
-def co_registration(patient_id=None,moving_path_mask=None,target_path_mask=None,moving_path_raw=None,target_path_raw=None,only=False):
-    # load original data 
+def upload_all_files_raw(moving_path_raw=None,target_path_raw=None):
     pre_data = nib.load(target_path_raw).get_fdata()
     post_data = nib.load(moving_path_raw).get_fdata()
+    img_data_pre = np.zeros((pre_data.shape[0], pre_data.shape[1], pre_data.shape[-1]), dtype=np.uint8)
+    img_data_post = np.zeros((post_data.shape[0], post_data.shape[1], post_data.shape[-1]), dtype=np.uint8)
+    for i in range(pre_data.shape[-1]):
+        img_data_pre[:, :, i] = draw_two_parallel_lines(np.zeros((pre_data.shape[0], pre_data.shape[0]))) 
     
-    if only:
-        #generate random data
-        img_data_pre = np.zeros((pre_data.shape[0], pre_data.shape[1], pre_data.shape[-1]), dtype=np.uint8)
-        img_data_post = np.zeros((post_data.shape[0], post_data.shape[1], post_data.shape[-1]), dtype=np.uint8)
-        for i in range(pre_data.shape[-1]):
-            img_data_pre[:, :, i] = draw_two_parallel_lines(np.zeros((pre_data.shape[0], pre_data.shape[0]))) 
-        
-        for i in range(post_data.shape[-1]):
-            img_data_post[:, :, i] = draw_wide_diagonal_line(np.zeros((post_data.shape[0], post_data.shape[0])))
-    else:
-        # load segmentation data
-        img = nib.load(target_path_mask)
-        img_data_pre = img.get_fdata() 
-        img = nib.load(moving_path_mask)
-        img_data_post = img.get_fdata()
-
-
-
+    for i in range(post_data.shape[-1]):
+        img_data_post[:, :, i] = draw_wide_diagonal_line(np.zeros((post_data.shape[0], post_data.shape[0])))
     sdf_ct= distance_transform_edt(torch.tensor(img_data_post).permute(2, 0, 1))  
     sdf_oct= distance_transform_edt(torch.tensor(img_data_pre).permute(2, 0, 1))
 
     CT_sdf_cpr = torch.tensor(sdf_ct).unsqueeze(0)
     OCT_sdf_cpr = torch.tensor(sdf_oct).unsqueeze(0)
-    """
-    # Plot areas
-    plt.figure(figsize=(10, 6))
-    """
     Area_CT_ori = torch.sum((CT_sdf_cpr > 0), dim=(0, 2, 3))
-    np.save('Area_CT_ori.npy',Area_CT_ori)
     Area_OCT = torch.sum((OCT_sdf_cpr > 0), dim=(0, 2, 3))
-    np.save('Area_OCT_ori.npy',Area_OCT)
-    # detect bifurcation
-  
+    return CT_sdf_cpr,OCT_sdf_cpr,Area_CT_ori,Area_OCT,post_data,pre_data,img_data_pre,img_data_post,sdf_ct,sdf_oct
+def upload_all_files_seg(moving_path_mask=None,target_path_mask=None,moving_path_raw=None,target_path_raw=None):
+    pre_data = nib.load(target_path_raw).get_fdata()
+    post_data = nib.load(moving_path_raw).get_fdata()
+    # load segmentation data
+    img = nib.load(target_path_mask)
+    img_data_pre = img.get_fdata() 
+    img = nib.load(moving_path_mask)
+    img_data_post = img.get_fdata()
+    sdf_ct= distance_transform_edt(torch.tensor(img_data_post).permute(2, 0, 1))  
+    sdf_oct= distance_transform_edt(torch.tensor(img_data_pre).permute(2, 0, 1))
+
+    CT_sdf_cpr = torch.tensor(sdf_ct).unsqueeze(0)
+    OCT_sdf_cpr = torch.tensor(sdf_oct).unsqueeze(0)
+    Area_CT_ori = torch.sum((CT_sdf_cpr > 0), dim=(0, 2, 3))
+    Area_OCT = torch.sum((OCT_sdf_cpr > 0), dim=(0, 2, 3))
+    return CT_sdf_cpr,OCT_sdf_cpr,Area_CT_ori,Area_OCT,post_data,pre_data,img_data_pre,img_data_post,sdf_ct,sdf_oct
+def gui_play(Area_CT_ori,Area_OCT,CT_sdf_cpr,OCT_sdf_cpr,post_data,pre_data,only=False):
     root = tk.Tk()
     root.title("Oct Coregistration Tool")
     app = PeaksMatcherGUI(master=root, Area_CT=Area_CT_ori, Area_OCT=Area_OCT, CT_image=CT_sdf_cpr>0, OCT_image=OCT_sdf_cpr>0,or_ct=torch.tensor(post_data).permute(2, 0, 1).unsqueeze(0),or_oct=torch.tensor(pre_data).permute(2, 0, 1).unsqueeze(0),only=only)
@@ -58,6 +55,17 @@ def co_registration(patient_id=None,moving_path_mask=None,target_path_mask=None,
     # Capture organized pairs before closing
     #organized_pairs = organize_matched_pairs(app.highlighted_points)
     organized_pairs,ang_big,an = organize_matched_pairss(app.saving_orientation,app.saving_orientation_angl_show)
+    return organized_pairs,ang_big,an
+def gui_play_all(Area_CT_ori,Area_OCT,CT_sdf_cpr,OCT_sdf_cpr,post_data,pre_data,only=False):
+    roots = tk.Tk()
+    roots.title("Oct Coregistration Tool")
+    app = PeaksMatcherGUI(master=roots, Area_CT=Area_CT_ori, Area_OCT=Area_OCT, CT_image=CT_sdf_cpr>0, OCT_image=OCT_sdf_cpr>0,or_ct=torch.tensor(post_data).permute(2, 0, 1).unsqueeze(0),or_oct=torch.tensor(pre_data).permute(2, 0, 1).unsqueeze(0),only=False)
+    app.mainloop()
+    # Capture organized pairs before closing
+    #organized_pairs = organize_matched_pairs(app.highlighted_points)
+    organized_pairs,ang_big,an = organize_matched_pairss(app.saving_orientation,app.saving_orientation_angl_show)
+    return organized_pairs,ang_big,an
+def gui_co_rec(organized_pairs,ang_big,an,post_data,pre_data,CT_sdf_cpr,OCT_sdf_cpr,patient_id=None,only=False,save_path=None):
     print("Last organized pairs:", organized_pairs)
 
     left_count = sum(1 for item in an if item[1] == 'left')
@@ -234,14 +242,17 @@ def co_registration(patient_id=None,moving_path_mask=None,target_path_mask=None,
         print(f"Combined frames shape: {combined_frames.shape}")
         # Save as an MP4 video
         fps = 30  # frames per second
-        with imageio.get_writer('output.mp4', fps=fps, macro_block_size=1) as writer:
+        name  = patient_id + '.mp4'
+        video_path = save_path+"/" + name
+        with imageio.get_writer(video_path, fps=fps, macro_block_size=1) as writer:
             for frame in range(images1.shape[-1]):
                 writer.append_data(combined_frames[:,:,frame])
 
         print("Video saved as output.mp4")
 
         # Path to your MP4 file
-        video_path = "output.mp4"
+        print(save_path)
+        video_path = save_path+"/" + name
 
         # Check the operating system
         if platform.system() == "Windows":
@@ -250,49 +261,85 @@ def co_registration(patient_id=None,moving_path_mask=None,target_path_mask=None,
             subprocess.call(["open", video_path])
         else:  # Linux and other UNIX-like systems
             subprocess.call(["xdg-open", video_path])
+
+    patient = patient_id
+    #create a dictionary to store the data pt format
+
+
+
+    #d = torch.load('data.pt')
+    d={}
+    d[patient] = {}
+    d[patient]['bif_(PostTarget_StentMoving)'] = [organized_pairs,ang_big]
+    torch.save(d, save_path+"/"+patient+'meta_data.pt')
+    #br.shape[-1]
+    brs = nib.Nifti1Image(br, np.eye(4))
+    nib.save(brs, save_path+"/"+patient+'moving.nii.gz')
+
+    fixed_images = nib.Nifti1Image(fixed_image, np.eye(4))       
+    nib.save(fixed_images,  save_path+"/"+patient+'target.nii.gz')
     return CT_selected_indices_shift, OCT_selected_indices_shift, fixed_image, br, organized_pairs,ang_big,ct_data_or
-
-
 
 class FileDropApp:
     def __init__(self, mastert):
         self.mastert = mastert
         self.mastert.attributes('-fullscreen', True)
-        
+        self.result = None 
         # Variables to hold the file paths
         self.obligatory_files = []
         self.optional_files = []
-
+        self.co_registration_thread = None
         # Store frames and labels for updating
         self.obligatory_files_frame = None
         self.optional_files_frame = None
         self.start_button = None
         self.patient_id = None
-
+        self.task_thread = None
+        self.save_path = tk.StringVar() 
+        self.estimated_duration = 10  # Estimated duration of the task in seconds
+        self.progress_increment = 100 / (self.estimated_duration * 10)  # Progress increment per 100ms
+        self.progress_value = 0  # Initialize progress value
         # Configure the layout
         self.configure_layout()
 
     def configure_layout(self):
         """Set up the layout for the drag-and-drop areas and file upload buttons."""
-        # Section for Patient ID
-        patient_id_label = Label(self.mastert, text="Enter Patient ID:", font=('Arial', 12, 'bold'))
-        patient_id_label.pack(pady=10)
-        
-        # Entry widget for Patient ID
-        self.patient_id_entry = Entry(self.mastert, width=30)
-        self.patient_id_entry.pack(pady=5)
+        # Create a frame to hold the label and entry widget
+        patient_frame = Frame(self.mastert)
+        patient_frame.pack(pady=10)
+
+        # Section for Patient ID label inside the frame
+        patient_id_label = Label(patient_frame, text="Enter Patient ID", font=('Arial', 12, 'bold'))
+        patient_id_label.pack(side='right', padx=10)
+
+        # Entry widget for Patient ID inside the frame
+        self.patient_id_entry = Entry(patient_frame, width=30)
+        self.patient_id_entry.pack(side='right', padx=5)
+        self.patient_id_entry.bind("<Return>", self.confirm_entry)
+        # Frame to hold the entry and button side by side
+        save_path_frame = tk.Frame(self.mastert)
+        save_path_frame.pack(pady=30)  # Adjust the padding as needed
+
+        # Entry widget to display the selected save path
+        self.save_path_entry = Entry(save_path_frame, width=30, textvariable=self.save_path)
+        self.save_path_entry.pack(side="left", padx=5)
+
+        # Button to browse and select the save path
+        browse_button = Button(save_path_frame, text="Choose Save Location", command=self.browse_save_path)
+        browse_button.pack(side="left")
+
         # Section for Obligatory Files
         self.obligatory_files_frame = self.create_drop_section(
-            "Upload Raw Files (Required)",
-            "Drag and drop .nii.gz files here",
+            "Patient Files (Required)",
+            "Drag and drop files e.g. <patient_id>.nii.gz files here",
             self.browse_obligatory_file,
             self.drop_obligatory_file
         )
         
         # Section for Optional Files
         self.optional_files_frame = self.create_drop_section(
-            "Upload Segmentation Files (Optional)",
-            "Drag and drop optional .nii.gz files here",
+            "Segmentation Files (Optional)",
+            "Drag and drop files e.g. <segmentation>.nii.gz files here",
             self.browse_optional_file,
             self.drop_optional_file
         )
@@ -301,14 +348,32 @@ class FileDropApp:
         self.start_button = Button(self.mastert, text="Start", state="disabled", command=self.start_action)
         self.start_button.pack(pady=20)
 
+        self.progress = ttk.Progressbar(self.mastert, orient="horizontal", length=200, mode="determinate")
+        self.progress.pack(pady=20)
 
-
+    def browse_save_path(self):
+        """Open a dialog to select a folder to save the output."""
+        path = filedialog.askdirectory()  # Open directory selection dialog
+        if path:
+            self.save_path.set(path)  # Set the selected path in the save_path variable
+        self.update_start_button_state()
+    # Function to confirm entry and retrieve the Patient ID
+    def confirm_entry(self, event=None):
+        patient_id = self.patient_id_entry.get()
+        if patient_id:
+            self.update_start_button_state()
+            print(f"Patient ID entered: {patient_id}")
+        else:
+            self.update_start_button_state()
+            print("No Patient ID entered.")
     def create_drop_section(self, title, drop_label, browse_command, drop_handler):
         """Creates a section with a label, drag-and-drop area, and file browse button."""
-        
+                # File upload button
+        browse_btn = Button(self.mastert, text=f" {title}", command=browse_command)
+        browse_btn.pack(padx=10)
         # Section label (title)
-        section_label = Label(self.mastert, text=title, font=('Arial', 12, 'bold'))
-        section_label.pack(pady=10)
+        #section_label = Label(self.mastert, text=title, font=('Arial', 12, 'bold'))
+        #section_label.pack(pady=10)
 
         # Create a frame with a groove border for the drop area
         drop_frame = Frame(self.mastert, width=400, height=100, relief="groove", bd=2)
@@ -323,13 +388,11 @@ class FileDropApp:
         drop_frame.drop_target_register(DND_FILES)
         drop_frame.dnd_bind('<<Drop>>', drop_handler)
 
-        # File upload button
-        browse_btn = Button(self.mastert, text=f" {title}", command=browse_command)
-        browse_btn.pack(pady=5)
+
 
         # Frame to display the added files and delete buttons
         files_frame = Frame(self.mastert)
-        files_frame.pack(pady=5)
+        files_frame.pack(pady=10)
 
         return files_frame
 
@@ -355,7 +418,7 @@ class FileDropApp:
         if file_paths:
             for file_path in file_paths:
                 self.process_file(file_path, self.optional_files, "Optional", self.optional_files_frame)
-
+        self.update_start_button_state()
     # File Drop for Optional Files
     def drop_optional_file(self, event):
         file_paths = self.split_file_paths(event.data)
@@ -364,7 +427,7 @@ class FileDropApp:
                 self.process_file(file_path, self.optional_files, "Optional", self.optional_files_frame)
             else:
                 messagebox.showerror("Invalid File", "Please drop a .nii.gz file")
-
+        self.update_start_button_state()
     def split_file_paths(self, data):
         """Split file paths when multiple files are dragged and dropped."""
         return data.split(" ")  # Split file paths by space for multi-file drag
@@ -401,13 +464,48 @@ class FileDropApp:
 
     def update_start_button_state(self):
         """Enable or disable the Start button based on file conditions."""
-        if len(self.obligatory_files) == 2 and (len(self.optional_files) == 0 or len(self.optional_files) == 2):
+        if len(self.obligatory_files) == 2 and (len(self.optional_files) == 0 or len(self.optional_files) == 2) and self.save_path.get() and self.patient_id_entry.get():
+            print("All files and information are ready")
             self.start_button.config(state="normal")
+
+
         else:
             self.start_button.config(state="disabled")
 
-
     def start_action(self):
+        self.progress_value = 0  # Reset the progress bar value
+        self.progress['value'] = 0  # Reset the progress bar display
+
+        # Start the long-running task in a separate thread
+        self.task_thread = threading.Thread(target=self.run_task)
+        self.task_thread.start()
+
+        # Start automatically updating the progress bar
+        self.update_progress()
+    def update_progress(self):
+        # Continue updating the progress bar until self.result is available
+        if not self.result:  # If the result is not yet available
+            if self.progress['value'] < 100:
+                self.progress['value'] += 3  # Increment progress bar by 2% every 500ms
+            self.mastert.after(800, lambda: self.update_progress())
+            #self.mastert.after(500, self.update_progress)  # Call this function again after 500ms
+        else:
+            # Once the result is ready, set the progress bar to 100% and continue with logic
+            self.progress['value'] = 100
+            print("Loading Complete")
+            self.handle_result()
+    def handle_result(self):
+            """Handle the result once the task is done."""
+            if self.result:
+                CT_sdf_cpr, OCT_sdf_cpr, Area_CT_ori, Area_OCT, post_data, pre_data, img_data_pre, img_data_post, sdf_ct, sdf_oct, only = self.result
+                if only:
+                   organized_pairs, ang_big, an = gui_play(Area_CT_ori, Area_OCT, CT_sdf_cpr, OCT_sdf_cpr, post_data, pre_data, only)
+                else:
+                    organized_pairs, ang_big, an = gui_play_all(Area_CT_ori, Area_OCT, CT_sdf_cpr, OCT_sdf_cpr, post_data, pre_data, only)
+                gui_co_rec(organized_pairs, ang_big, an, post_data, pre_data, CT_sdf_cpr, OCT_sdf_cpr, patient_id=self.patient_id_entry.get(), only=only, save_path=self.save_path.get())
+
+    def run_task(self):
+ 
         """Action triggered when the Start button is clicked."""
         if len(self.obligatory_files) == 2 and len(self.optional_files) == 2:
             self.patient_id = self.patient_id_entry.get()
@@ -430,8 +528,9 @@ class FileDropApp:
                     moving_path_raw = file_path
                 elif 'Pre' in file_path:
                     target_path_raw = file_path
-     
-            CT_selected_indices_shift,OCT_selected_indices_shift, fixed_image, br,organized_pairs,ang_big,ct_data_or = co_registration(patient,moving_path_raw=moving_path_raw,target_path_raw=target_path_raw,moving_path_mask=moving_path_mask,target_path_mask=target_path_mask,only=False)
+            CT_sdf_cpr,OCT_sdf_cpr,Area_CT_ori,Area_OCT,post_data,pre_data,img_data_pre,img_data_post,sdf_ct,sdf_oct=upload_all_files_seg(moving_path_mask=moving_path_mask,target_path_mask=target_path_mask,moving_path_raw=moving_path_raw,target_path_raw=target_path_raw)
+            self.result = (CT_sdf_cpr, OCT_sdf_cpr, Area_CT_ori, Area_OCT, post_data, pre_data, img_data_pre, img_data_post, sdf_ct, sdf_oct,False)
+            self.progress['value'] = 100  # Ensure the progress bar is full
         else:
             self.patient_id = self.patient_id_entry.get()
             #self.master.destroy()  # Close the current window
@@ -449,23 +548,9 @@ class FileDropApp:
                 elif 'Pre_0000' in file_path:
                     target_path_raw = file_path
              
-            CT_selected_indices_shift,OCT_selected_indices_shift, fixed_image, br,organized_pairs,ang_big,ct_data_or = co_registration(patient,moving_path_raw=moving_path_raw,target_path_raw=target_path_raw,only=True)
-        
-        """
-        # Open a new window to show the file shapes
-        new_window = tk.Tk()
-        new_window.title("File Shapes")
-        new_window.geometry("400x300")
-        
-        shapes_label = Label(new_window, text="Shapes of the added files:", font=("Arial", 12, "bold"))
-        shapes_label.pack(pady=10)
-
-        # Print shapes of the files
-        self.show_file_shapes(new_window)
-
-        new_window.mainloop()
-        """
-
+            CT_sdf_cpr,OCT_sdf_cpr,Area_CT_ori,Area_OCT,post_data,pre_data,img_data_pre,img_data_post,sdf_ct,sdf_oct=upload_all_files_raw(moving_path_raw=moving_path_raw,target_path_raw=target_path_raw)
+            self.result = (CT_sdf_cpr, OCT_sdf_cpr, Area_CT_ori, Area_OCT, post_data, pre_data, img_data_pre, img_data_post, sdf_ct, sdf_oct,True)
+            self.progress['value'] = 100  # Ensure the progress bar is full
 
 if __name__ == "__main__":
     # Create TkinterDnD window
@@ -474,6 +559,9 @@ if __name__ == "__main__":
     
     # Instantiate the app
     app = FileDropApp(mastert=root)
-
-    # Start the Tkinter event loop
     root.mainloop()
+
+
+
+
+    

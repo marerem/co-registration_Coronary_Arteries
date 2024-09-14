@@ -18,7 +18,7 @@ from PIL import Image, ImageTk
 import cv2
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
-
+import functools
 distinct_colors_extended = [
     '#FF0000',  # red
     '#008000',  # green
@@ -177,7 +177,7 @@ class PeaksMatcherGUI(ttk.Frame):
         self.vector_oct = []
         self.or_ct = or_ct  
         self.or_oct = or_oct
-        self.plot_type = tk.StringVar(value='circle')
+        #self.plot_type = tk.StringVar(value='circle')
         self.ct_frames = CT_image.detach().numpy()
         self.oct_frames = OCT_image.detach().numpy()
         self.ct_current_frame_line = None
@@ -198,15 +198,17 @@ class PeaksMatcherGUI(ttk.Frame):
         self.saving_orientation_angl_show = {'ct': {}}
         self.points = {'ct': [], 'oct': []}
         self.Only = only
+       
         # Layout setup
         self.pack(fill=tk.BOTH, expand=tk.YES)
 
         # Create the main GUI frame (left side)
-
+        # Create a style
 
         # Create the Matched Pairs frame (right side)
         self.pairs_frame = ttk.Frame(self)
         self.pairs_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        
         # Create Treeview in the pairs frame
         self.pairs_tree = ttk.Treeview(self.pairs_frame, columns=("CT", "OCT"))
         self.pairs_tree.heading("#0", text="ID", anchor=tk.W)
@@ -236,7 +238,8 @@ class PeaksMatcherGUI(ttk.Frame):
         
         # Protocols for closing the main window
         self.master.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
+       
+      
 
     def on_item_action(self):
 
@@ -261,6 +264,7 @@ class PeaksMatcherGUI(ttk.Frame):
         #self.save_btn = ttk.Button(self.plot_window, text='Save orientation', command=self.save_current_orientation)
         #self.save_btn.pack(pady=10)
         self.fig_or, self.axes = plt.subplots(2, 1, figsize=(8, 6))
+
         if self.Only==True:
             self.fig_or.text(0.05, 0.5,"Step 2: Assign the direction for selected landmarks.\nManually assign by clicking on the plot.",
                      horizontalalignment='left', verticalalignment='center',
@@ -284,8 +288,7 @@ class PeaksMatcherGUI(ttk.Frame):
             ]
 
         for text, value in options:
-            radio = tk.Radiobutton(radio_frame, text=text, variable=self.plot_type, value=value,
-                                command=lambda: self.show_plots(item_values))
+            radio = tk.Radiobutton(radio_frame, text=text, variable=self.plot_type, value=value,command=functools.partial(self.show_plots, item_values)) #command=lambda: self.show_plots(item_values))
             radio.pack(side=tk.LEFT)
 
 
@@ -326,7 +329,7 @@ class PeaksMatcherGUI(ttk.Frame):
         print("Save orientation button clicked",self.plot_type.get(),self.ct_value,self.oct_value)
         
         self.show_save_popup()
-        
+
         self.plot_window.destroy()
     def highlight_rows_with_ct_19(self):
         """Highlight rows where the CT value is 19."""
@@ -334,13 +337,39 @@ class PeaksMatcherGUI(ttk.Frame):
         ct_keys = self.saving_orientation['ct'].keys()
         ct_keys = [int(i) for i in ct_keys]
         print("CT keys",ct_keys)
+        all_ct_values = set() 
         # Iterate through all the items in the Treeview
         for item in self.pairs_tree.get_children():
             ct_value = self.pairs_tree.item(item, 'values')[0]  # Get the CT value
             print("CT value",ct_value)
+            all_ct_values.add(int(ct_value))
             if int(ct_value) in ct_keys:  # Check if the CT value is 19
                 print("CT print",ct_value)
                 self.pairs_tree.item(item, tags=('highlight',))
+        ##
+        ct_keys = self.saving_orientation['ct'].keys()
+        ct_keys = [int(i) for i in ct_keys]
+        all_ct_values = set()
+        for item in self.pairs_tree.get_children():
+            ct_value = self.pairs_tree.item(item, 'values')[0]  # Get the CT value
+            print("CT value",ct_value)
+            all_ct_values.add(int(ct_value))
+        ##
+        if all(value in ct_keys for value in all_ct_values) and len(ct_keys) >= 2:
+            # Check if the button (self.big_button) exists and enable it if it does
+            if hasattr(self, 'big_button') and self.big_button:
+                self.big_button.config(state='normal',highlightbackground="#90EE90")  # Enable the button#
+
+                print("Button exists and is now enabled.")
+            else:
+                print("Button does not exist.")
+        else:
+            if hasattr(self, 'big_button') and self.big_button:
+                self.big_button.config(state='disabled',highlightbackground="light grey")  # Disable the button
+
+                print("Condition not met.")
+
+
     def show_save_popup(self):
         root = tk.Tk()
         root.withdraw()  # Hide the root window
@@ -952,6 +981,11 @@ class PeaksMatcherGUI(ttk.Frame):
         self.update_plot()
         self.add_pairs_button = tk.Button(self.plot_frame, text="Add Pairs", command=self.add_pairs)
         self.add_pairs_button.pack(pady=20)
+
+        # Big button (on the right)
+        self.big_button = tk.Button(self.plot_frame, text="Run", height=3, width=10,relief=tk.RAISED,borderwidth=5,command=self.run_registration,state="disabled",highlightbackground="light grey")
+        self.big_button.pack(side=tk.RIGHT, padx=20)  #
+
     def create_widgets_only(self):
         # Slider Frame for adjustments
         print("Creating widgets...")
@@ -1015,8 +1049,21 @@ class PeaksMatcherGUI(ttk.Frame):
 
         self.canvas.mpl_connect('pick_event', self.on_pick)
         self.update_plot()
-        self.add_pairs_button = tk.Button(self.plot_frame, text="Add Pairs", command=self.add_pairs)
-        self.add_pairs_button.pack(pady=20)
+
+        # Add Pairs button (on the left)
+        add_pairs_button = tk.Button(self.plot_frame, text="Add Pairs", command=self.add_pairs)
+        add_pairs_button.pack(side=tk.TOP, padx=20)  # Padding to the right
+
+        # Big button (on the right)
+        self.big_button = tk.Button(self.plot_frame, text="Run", height=3, width=10,relief=tk.RAISED,borderwidth=5,command=self.run_registration,state="disabled",highlightbackground="light grey")
+        self.big_button.pack(side=tk.RIGHT, padx=20)  #
+
+
+
+        #self.add_pairs_button = tk.Button(self.plot_frame, text="Add Pairs", command=self.add_pairs)
+        #self.add_pairs_button.pack(pady=20)
+ 
+
     def add_pairs(self):
         self.ct_frame_index
         self.ct_frame_index
@@ -1137,7 +1184,10 @@ class PeaksMatcherGUI(ttk.Frame):
                 self.quit() 
                 self.destroy()
 
+    def run_registration(self):
 
+        self.quit() 
+        self.destroy()
 
     def show_saving_orientation(self):
         def overlap_vusial(idx,CT_image,center_ct,outermost_ct,OCT_image,center_oct,outermost_oct):
@@ -1668,7 +1718,9 @@ class PeaksMatcherGUI(ttk.Frame):
         self.ax[0].tick_params(axis='both', which='major', labelsize=10)  # Updated tick labels font size
         self.ax[0].xaxis.label.set_size(8)  # Updated x-axis label font size
         self.ax[0].yaxis.label.set_size(8)  # Updated y-axis label font size
+  
         self.highlight_rows_with_ct_19()
+
         self.canvas.draw()
 
     def on_pick(self, event):
