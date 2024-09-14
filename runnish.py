@@ -241,10 +241,11 @@ def gui_co_rec(organized_pairs,ang_big,an,post_data,pre_data,CT_sdf_cpr,OCT_sdf_
         combined_frames = np.hstack((images1, images2)) 
         print(f"Combined frames shape: {combined_frames.shape}")
         # Save as an MP4 video
+       
         fps = 30  # frames per second
         name  = patient_id + '.mp4'
         video_path = save_path+"/" + name
-        with imageio.get_writer(video_path, fps=fps, macro_block_size=1) as writer:
+        with imageio.get_writer(video_path, fps=fps,format='FFMPEG', macro_block_size=1) as writer:
             for frame in range(images1.shape[-1]):
                 writer.append_data(combined_frames[:,:,frame])
 
@@ -283,7 +284,7 @@ def gui_co_rec(organized_pairs,ang_big,an,post_data,pre_data,CT_sdf_cpr,OCT_sdf_
 class FileDropApp:
     def __init__(self, mastert):
         self.mastert = mastert
-        self.mastert.attributes('-fullscreen', True)
+        #self.mastert.attributes('-fullscreen', False)
         self.result = None 
         # Variables to hold the file paths
         self.obligatory_files = []
@@ -554,7 +555,19 @@ class FileDropApp:
 
 if __name__ == "__main__":
     # Create TkinterDnD window
+    import os
+    os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+    import subprocess
+    import sys
+
+    # Function to install a package using pip
+    def install(package):
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+
+    # Install imageio with ffmpeg support
+    install("imageio[ffmpeg]")
     root = TkinterDnD.Tk()
+    root.state('zoomed')
     root.title("File Drop Application")
     
     # Instantiate the app

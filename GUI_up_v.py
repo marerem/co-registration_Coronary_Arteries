@@ -169,7 +169,8 @@ def organize_matched_pairss(saving_orientation,saving_orientation_angl_show):
 class PeaksMatcherGUI(ttk.Frame):
     def __init__(self, master, Area_CT=None, Area_OCT=None, CT_image=None, OCT_image=None, or_ct=None, or_oct=None,only=False):
         super().__init__(master)
-        self.master.attributes('-fullscreen', True)
+        
+        self.master.state('zoomed')
         # Initializing variables
                 # Increase button size and text globally using ttk.Style
         self.angle_between_common = 0
@@ -259,6 +260,7 @@ class PeaksMatcherGUI(ttk.Frame):
  
         # Add RadioButtons to choose plot type
         self.plot_window = tk.Toplevel(self)
+        self.plot_window.state('zoomed')
         self.plot_window.title("Orientation")
         
         #self.save_btn = ttk.Button(self.plot_window, text='Save orientation', command=self.save_current_orientation)
@@ -372,6 +374,7 @@ class PeaksMatcherGUI(ttk.Frame):
 
     def show_save_popup(self):
         root = tk.Tk()
+        
         root.withdraw()  # Hide the root window
         messagebox.showinfo("Save Points", "Points have been saved successfully!")
         root.destroy()
