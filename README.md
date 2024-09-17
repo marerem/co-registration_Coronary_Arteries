@@ -26,7 +26,7 @@ Steps to install the project.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/coronary-artery-imaging.git
+git clone [Windwos ot MacOS link]
 cd coronary-artery-imaging
 
 # Create and activate a virtual environment
@@ -38,3 +38,6 @@ pip install -r requirements.txt
 
 ```
 
+### App Installation
+
+Follow the link for your desired operating system.
