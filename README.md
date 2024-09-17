@@ -1,41 +1,28 @@
-# Spline Co-Registration of Coronary Artery Imaging
-
-This Spline approuch, with a graphical user interface (GUI), assists in co-registering two sequences of images by aligning one sequence to another based on user-selected checkpoints.
-
-## Motivation
-
-Doctors use a catheter with a camera to examine coronary arteries. Before and after procedures like stent placements, two sets of images are obtained. These sets start and end at different points, have different angles, and contain a different number of frames. Manually aligning these images is challenging and time-consuming. This user-friendly GUI simplifies the alignment process, making it quicker and easier.
-
-## Complexity and Runtime
-
-The algorithm has a complexity of O(n), where n is the number of frames in a sequence. 
-
-### Runtime Performance
-
-- **Average Time per 250 Frames:** 5 seconds
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.12
-- Required Python packages (listed in `requirements.txt`)
-
-### Installation
+## Installation App on MacOS operation system
 
 Steps to install the project.
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/coronary-artery-imaging.git
-cd coronary-artery-imaging
+1. Navigate to the directory where your app will be 
+cd /Users/YourUserName/Desktop/
 
-# Create and activate a virtual environment
-conda env create -f environment.yml
-conda activate coronary-artery-imaging
+2. Create .command file there with script (see example file RAG.command)
 
-# Install required packages
-pip install -r requirements.txt
+#!/bin/bash
+
+# Initialize conda for shell
+eval "$(/opt/homebrew/Caskroom/miniforge/base/bin/conda shell.bash hook)"
+
+# Activate the conda environment
+conda activate /opt/homebrew/Caskroom/miniforge/base/envs/nameofmyenv
+
+# Run your Python script
+python /Users/YourUserName/Desktop/co-registration_Coronary_Arteries/runnish.py
+
+
+3. Use the following command to make the .command file executable
+
+chmod +x RAG.command
 
 ```
 
@@ -69,27 +56,12 @@ coronary-artery-imaging/
 │
 ├── pre_post_flow.ipynb/ - it's ipynb file where you can run co-registration using Jupyter Notebook
 │
+├── runnish.py/ - application initialization, along with a script to enable the uploading of data for co-registration (limited to .nii.gz format).
 ├── requirements.txt 
 ├── environment.yml
 ├── README.md
 
 '''
 
-
-Create local App on MacOS OS and Windows.
-1. Navigate to the directory where your app will be 
-cd /Users/YourUserName/Desktop/
-
-2. Create .command file there with script (see example file RAG.command) / .bat file and Change "Save as type" to "All Files".
-@echo off
-cd /d C:\path\to\your\script\
-python script.py
-pause
-
-
-
-3. Use the following command to make the .command file executable
-
-chmod +x RAG.command
 
 
