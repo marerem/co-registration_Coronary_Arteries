@@ -11,6 +11,14 @@ https://github.com/user-attachments/assets/892990fa-c3a7-40d5-af71-7840aaff4f9b
 
 - Python 3.12
 - Required Python packages (listed in `requirements.txt`)
+### Operating System
+
+Depending on your operating system, we provide two separate branches:
+
+- **macOS and Linux**: [macOS/Linux Branch](https://github.com/marerem/co-registration_Coronary_Arteries/tree/macOS-app)
+- **Windows**: [Windows Branch](https://github.com/marerem/co-registration_Coronary_Arteries/tree/app_final_check)
+
+
 
 ### Installation
 
