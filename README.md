@@ -1,6 +1,6 @@
 # App for co-registering image sequences using a novel spline-based approach
 
-This app enhances processing speed by 22x, allowing the co-registration of a sequence of 300 frames in just 9 seconds. It is compatible with Windows and MacOS and is powered by a novel spline-based algorithm developed at MIT’s Edelman Lab. Originally designed for medical hardware, it efficiently aligns videos with rotational, transverse, and displacement adjustments.
+This app enhances processing speed by 40x, allowing the co-registration of a sequence of 300 frames in just 5 seconds. It is compatible with Windows and MacOS and is powered by a novel spline-based algorithm developed at MIT’s Edelman Lab. Originally designed for medical hardware, it efficiently aligns videos with rotational, transverse, and displacement adjustments.
 
 https://github.com/user-attachments/assets/892990fa-c3a7-40d5-af71-7840aaff4f9b
 
